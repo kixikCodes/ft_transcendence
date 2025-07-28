@@ -1,10 +1,10 @@
 import { GameScene , BallMesh } from "../interfaces/GameInterfaces.js";
 import { GameConfig } from "./GameConfig.js";
-// import * as BABYLON from 'babylonjs';
+//	import * as BABYLON from 'babylonjs';
 
 export class SceneBuilder {
-	private canvas : HTMLCanvasElement;
-	private engine : BABYLON.Engine;
+	private canvas:	HTMLCanvasElement;
+	private engine:	BABYLON.Engine;
 
 	constructor(canvasId: string) {
 		const canvasElement = document.getElementById(canvasId) as HTMLCanvasElement;
@@ -39,7 +39,20 @@ export class SceneBuilder {
 	}
 
 	private setUpCamera(scene: GameScene) : void {
-		scene.camera = new BABYLON.ArcRotateCamera("camera", -Math.PI/2, Math.PI/5, 85, BABYLON.Vector3.Zero(), scene);
+		
+		//	Store initial camera values
+		const alpha = -Math.PI/2;
+		const beta = Math.PI/5;
+		const radius = Math.max(GameConfig.FIELD_WIDTH, GameConfig.FIELD_HEIGHT) * 0.85;
+
+		//	Create default camera
+		scene.camera = new BABYLON.ArcRotateCamera("camera", alpha, beta, radius, BABYLON.Vector3.Zero(), scene);
+
+		//	Save values to camera
+		(scene.camera as any).og_alpha = alpha;
+		(scene.camera as any).og_beta = beta;
+		(scene.camera as any).og_radius = radius;
+
 		//	Move the camera using mouse. Maybe for cool battle intro? (Disabled manual movement)
 		//scene.camera.attachControl(this.canvas, true);
 	}
@@ -49,8 +62,8 @@ export class SceneBuilder {
 
 		//	Ground
 		scene.ground = BABYLON.MeshBuilder.CreateGround("ground", {
-			width: GameConfig.FIELD_WIDTH,
-			height: GameConfig.FIELD_HEIGHT
+			width:	GameConfig.FIELD_WIDTH,
+			height:	GameConfig.FIELD_HEIGHT
 		}, scene);
 
 		//	Score display
@@ -126,7 +139,7 @@ export class SceneBuilder {
 	}
 
 	//	Set origin for all Scene objects
-	private positionObjects(scene : GameScene): void {
+	private positionObjects(scene : GameScene) : void {
 		//	Positions as vector3 (x, y, z) / (width, height, depth)
 		scene.ball.position = new BABYLON.Vector3(0, 0.5, 0);
 		scene.paddle1.position = new BABYLON.Vector3(-GameConfig.FIELD_WIDTH / 2 + 5, 0.5, 0);

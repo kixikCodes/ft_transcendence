@@ -27,7 +27,7 @@ export class GameConfig {
 		return (this.FIELD_HEIGHT / 100);
 	}
 	
-	private static getDifficultyMultiplier() : number {
+	private static getDifficultyMultiplier(): number {
 		switch (this.settings.difficulty) {
 			case 'EASY':	return (0.7);
 			case 'MEDIUM':	return (1.0);
@@ -40,7 +40,7 @@ export class GameConfig {
 	}
 	
 	public static getDifficulty() {
-		return (this.settings.difficulty);
+		return this.settings.difficulty;
 	}
 
 	public static setOpponent(opponent: 'PERSON' | 'REMOTE' | 'AI') {
@@ -48,6 +48,6 @@ export class GameConfig {
 	}
 	
 	public static getOpponent() {
-		return (this.settings.opponent);
+		return this.settings.opponent;
 	}
 }

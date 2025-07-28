@@ -134,11 +134,6 @@ export class GameLogic {
 		if (!camera)
 			return;
 
-		//	Assign original values to allow for a reset later
-		const originalAlpha = camera.alpha;
-		const originalBeta = camera.beta;
-		const originalRadius = camera.radius;
-
 		//	Set shake values
 		const shakeMagnitude = (force * 0.04) + Math.random() * force * 0.02;
 		const shakeDuration = 500;	//in milliseconds
@@ -148,16 +143,17 @@ export class GameLogic {
 		const animateShake = (now: number) => {
 			const progress = Math.min((now - startTime) / shakeDuration, 1);
 			const fade = 1 - progress;
+			const cam = camera as any;
 
 			if (progress < 1) {
-				camera.alpha = originalAlpha + (Math.random() - 0.5) * shakeMagnitude * fade;
-				camera.beta  = originalBeta  + (Math.random() - 0.5) * shakeMagnitude * fade;
-				camera.radius= originalRadius+ (Math.random() - 0.5) * shakeMagnitude * fade;
+				camera.alpha = cam.og_alpha + (Math.random() - 0.5) * shakeMagnitude * fade;
+				camera.beta  = cam.og_beta  + (Math.random() - 0.5) * shakeMagnitude * fade;
+				camera.radius= cam.og_radius+ (Math.random() - 0.5) * shakeMagnitude * fade;
 				requestAnimationFrame(animateShake);
 			} else {
-				camera.alpha = originalAlpha;
-				camera.beta = originalBeta;
-				camera.radius = originalRadius;
+				camera.alpha = cam.og_alpha;
+				camera.beta  = cam.og_beta;
+				camera.radius= cam.og_radius;
 			}
 		};
 
