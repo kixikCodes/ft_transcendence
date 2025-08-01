@@ -70,7 +70,7 @@ export class GameLogic {
 		ball.position.z += ball.speed.vspd;
 		
 		//	Collision with left paddle
-		if (ball.position.x <= (paddle1.position.x + 2))
+		if (ball.position.x <= (paddle1.position.x - ball.speed.hspd))
 		{
 			//	Goal
 			if (ball.position.z > (paddle1.position.z + paddleSize / 2) || ball.position.z < (paddle1.position.z - paddleSize / 2))
@@ -84,8 +84,9 @@ export class GameLogic {
 				this.screenshake(ball.speed.hspd);
 			}
 		}
+
 		//	Collision with right paddle
-		else if (ball.position.x >= (paddle2.position.x - 2))
+		if (ball.position.x >= (paddle2.position.x - ball.speed.hspd))
 		{
 			//	Goal
 			if (ball.position.z > (paddle2.position.z + paddleSize / 2) || ball.position.z < (paddle2.position.z - paddleSize / 2))
@@ -99,8 +100,9 @@ export class GameLogic {
 				this.screenshake(ball.speed.hspd);
 			}
 		}
+
 		//	Bounce off upper and bottom wall (reverse vertical speed)
-		else if ((ball.position.z > (this.scene.upperWall.position.z - 1) && ball.speed.vspd > 0)
+		if ((ball.position.z > (this.scene.upperWall.position.z - 1) && ball.speed.vspd > 0)
 			|| (ball.position.z < (this.scene.bottomWall.position.z + 1) && ball.speed.vspd < 0))
 		{
 			this.screenshake(ball.speed.vspd);
@@ -118,8 +120,8 @@ export class GameLogic {
 		ball.position.z = 0;
 
 		//	Randomize direction for next serve
-		ball.speed.hspd = 0;//Math.random() < 0.5 ? ball.speed.hspd : -ball.speed.hspd;
-		ball.speed.vspd = Math.random() < 0.5 ? ball.speed.vspd : -ball.speed.vspd;
+		ball.speed.hspd = ball.speed.hspd * (Math.random() < 0.5 ? 1 : -1);
+		ball.speed.vspd = ball.speed.vspd * (Math.random() < 0.5 ? 1 : -1);
 
 		//	Pause game after score
 		// this.gameStatus.playing = false;

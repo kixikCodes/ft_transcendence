@@ -16,13 +16,13 @@ export interface Speed {
 
 //	Ball Info
 export interface BallMesh extends BABYLON.Mesh {
-	speed: Speed;
+	speed:		Speed;
 }
 
 //	Game Settings
 export interface GameSettings {
 	opponent:		'PERSON' | 'REMOTE' | 'AI';
-	difficulty:		'EASY' | 'MEDIUM' | 'HARD';
+	ai_difficulty:	'EASY' | 'MEDIUM' | 'HARD';
 	player_one_ai:	false | true;
 	player_two_ai:	false | true;
 }

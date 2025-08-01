@@ -12,6 +12,7 @@ services:
       - ./services/nginx/ssl:/etc/nginx/ssl:ro
     depends_on:
       - frontend
+      - backend
     networks:
       - transcendence-net
 
@@ -22,6 +23,21 @@ services:
     container_name: transcendence_frontend
     networks:
       - transcendence-net
+
+  backend:
+    build:
+      context: ./services/backend
+      dockerfile: Dockerfile
+    container_name: transcendence_backend
+    networks:
+      - transcendence-net
+    ports:
+      - "3000:3000"
+    volumes:
+      - backend_data:/app
+
+volumes:
+  backend_data:
 
 networks:
   transcendence-net:
