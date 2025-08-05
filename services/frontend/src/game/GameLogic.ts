@@ -1,5 +1,5 @@
 import { GameConfig } from "./GameConfig.js";
-import { GameScene, GameStatus, BallMesh } from "../interfaces/GameInterfaces.js";
+import { GameScene, GameStatus, BallMesh, PaddleMesh } from "../interfaces/GameInterfaces.js";
 
 export class GameLogic {
 	private scene : GameScene;
@@ -15,8 +15,38 @@ export class GameLogic {
 
 	public update() : void {
 		this.updatePaddles();
-		this.updateBall();
+		this.updateBall(true);
 		this.updateScores();
+	}
+
+	private updatePadleAI(paddle: PaddleMesh) : void {
+		const	ball = this.scene.ball;
+		const	paddleSpeed = GameConfig.paddleSpeed;
+		let		goal_z;
+		const	xx = ball.position.x;
+		const	zz = ball.position.z;
+		const	hh = ball.speed.hspd;
+		const	vv = ball.speed.vspd;
+
+		//	Simulate Ball movement
+		if (paddle.position.x < 0)
+		{
+			while (ball.position.x > paddle.position.x + 2)
+				this.updateBall(false);
+		}
+		else if (paddle.position.x > 0)
+		{
+			while (ball.position.x < paddle.position.x - 2)
+				this.updateBall(false);
+		}
+
+		//	Reset Ball position
+		goal_z = ball.position.z;
+		ball.position.x = xx;
+		ball.position.z = zz;
+		ball.speed.hspd = hh;
+		ball.speed.vspd = vv;
+		paddle.speed.vspd += ((Math.sign(goal_z - paddle.position.z) * paddleSpeed) - paddle.speed.vspd) * .2;
 	}
 
 	private updatePaddles() : void {
@@ -29,12 +59,12 @@ export class GameLogic {
 		const	paddleSize = GameConfig.paddleSize;
 		
 		//	Mock AI
-		if (ball.position.x < 0 && ball.speed.hspd < 0)
-			paddle1.speed.vspd = Math.sign(ball.position.z - paddle1.position.z) * paddleSpeed;
+		if (ball.speed.hspd < 0)
+			this.updatePadleAI(paddle1);
 		else
 			paddle1.speed.vspd *= .95;
-		if (ball.position.x > 0 && ball.speed.hspd > 0)
-			paddle2.speed.vspd = Math.sign(ball.position.z - paddle2.position.z) * paddleSpeed;
+		if (ball.speed.hspd > 0)
+			this.updatePadleAI(paddle2);
 		else
 			paddle2.speed.vspd *= .95;
 
@@ -67,7 +97,7 @@ export class GameLogic {
 			paddle2.position.z = upperWall.position.z - paddleSize / 2;
 	}
 
-	private updateBall() : void {
+	private updateBall(shake: boolean) : void {
 		const	ball = this.scene.ball;
 		const	paddle1 = this.scene.paddle1;
 		const	paddle2 = this.scene.paddle2;
@@ -93,7 +123,8 @@ export class GameLogic {
 			else	//	Block
 			{
 				ball.speed.hspd = -ball.speed.hspd;
-				this.screenshake(ball.speed.hspd);
+				if (shake)
+					this.screenshake(ball.speed.hspd);
 			}
 		}
 
@@ -109,7 +140,8 @@ export class GameLogic {
 			else	//	Block
 			{
 				ball.speed.hspd = -ball.speed.hspd;
-				this.screenshake(ball.speed.hspd);
+				if (shake)
+					this.screenshake(ball.speed.hspd);
 			}
 		}
 
@@ -117,7 +149,8 @@ export class GameLogic {
 		if ((ball.position.z > (this.scene.upperWall.position.z - ball.speed.vspd - 1) && ball.speed.vspd > 0)
 			|| (ball.position.z < (this.scene.bottomWall.position.z - ball.speed.vspd + 1) && ball.speed.vspd < 0))
 		{
-			this.screenshake(ball.speed.vspd);
+			if (shake)
+				this.screenshake(ball.speed.vspd);
 			ball.speed.vspd = -ball.speed.vspd;
 			//	Additional offset to avoid wall-clipping
 			ball.position.z += ball.speed.vspd;
