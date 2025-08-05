@@ -1,6 +1,6 @@
-const API_BASE_URL = "http://localhost:3000"; // Update if using a different URL
+const API_BASE_URL = "http://localhost:3000";
 
-export async function fetchUsers() {
+export async function	fetchUsers() {
   try {
     const response = await fetch(`${API_BASE_URL}/users`);
     if (!response.ok) {

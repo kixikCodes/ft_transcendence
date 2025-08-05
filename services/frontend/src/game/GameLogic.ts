@@ -20,23 +20,23 @@ export class GameLogic {
 	}
 
 	private updatePaddles() : void {
-		const paddle1 = this.scene.paddle1;
-		const paddle2 = this.scene.paddle2;
-		const ball = this.scene.ball;
-		const upperWall = this.scene.upperWall;
-		const bottomWall = this.scene.bottomWall;
-		const paddleSpeed = GameConfig.paddleSpeed;
-		const paddleSize = GameConfig.paddleSize;
+		const	paddle1 = this.scene.paddle1;
+		const 	paddle2 = this.scene.paddle2;
+		const	ball = this.scene.ball;
+		const	upperWall = this.scene.upperWall;
+		const	bottomWall = this.scene.bottomWall;
+		const	paddleSpeed = GameConfig.paddleSpeed;
+		const	paddleSize = GameConfig.paddleSize;
 		
 		//	Mock AI
 		if (ball.position.x < 0 && ball.speed.hspd < 0)
-			paddle1.speed.vspd += ((Math.sign(ball.position.z - paddle1.position.z) * paddleSpeed) - paddle1.speed.vspd) * 0.5;
+			paddle1.speed.vspd = Math.sign(ball.position.z - paddle1.position.z) * paddleSpeed;
 		else
-			paddle1.speed.vspd *= 0.95;
+			paddle1.speed.vspd *= .95;
 		if (ball.position.x > 0 && ball.speed.hspd > 0)
-			paddle2.speed.vspd += ((Math.sign(ball.position.z - paddle2.position.z) * paddleSpeed) - paddle2.speed.vspd) * 0.5;
+			paddle2.speed.vspd = Math.sign(ball.position.z - paddle2.position.z) * paddleSpeed;
 		else
-			paddle2.speed.vspd *= 0.95;
+			paddle2.speed.vspd *= .95;
 
 		//	Move offset paddle position using speed variables
 		paddle1.position.z += paddle1.speed.vspd;
@@ -68,10 +68,10 @@ export class GameLogic {
 	}
 
 	private updateBall() : void {
-		const ball = this.scene.ball;
-		const paddle1 = this.scene.paddle1;
-		const paddle2 = this.scene.paddle2;
-		const paddleSize = GameConfig.paddleSize;
+		const	ball = this.scene.ball;
+		const	paddle1 = this.scene.paddle1;
+		const	paddle2 = this.scene.paddle2;
+		const	paddleSize = GameConfig.paddleSize;
 
 		//	Update ball position based on speed attribute
 		ball.position.x = Math.max(-GameConfig.FIELD_WIDTH, Math.min(GameConfig.FIELD_WIDTH, ball.position.x));
@@ -93,7 +93,6 @@ export class GameLogic {
 			else	//	Block
 			{
 				ball.speed.hspd = -ball.speed.hspd;
-				ball.speed.vspd += paddle1.speed.vspd;
 				this.screenshake(ball.speed.hspd);
 			}
 		}
@@ -110,7 +109,6 @@ export class GameLogic {
 			else	//	Block
 			{
 				ball.speed.hspd = -ball.speed.hspd;
-				ball.speed.vspd += paddle2.speed.vspd;
 				this.screenshake(ball.speed.hspd);
 			}
 		}
@@ -122,12 +120,12 @@ export class GameLogic {
 			this.screenshake(ball.speed.vspd);
 			ball.speed.vspd = -ball.speed.vspd;
 			//	Additional offset to avoid wall-clipping
-			ball.position.y += ball.speed.vspd;
+			ball.position.z += ball.speed.vspd;
 		}
 	}
 
 	private resetBall() : void {
-		const ball = this.scene.ball;
+		const	ball = this.scene.ball;
 	
 		//	Reset Ball position to origin
 		ball.position.x = 0;
@@ -148,20 +146,20 @@ export class GameLogic {
 
 
 	private screenshake(force: number) : void {
-		const camera = this.scene.camera;
+		const	camera = this.scene.camera;
 		if (!camera)
 			return;
 
 		//	Set shake values
-		const shakeMagnitude = (force * 0.04) + Math.random() * force * 0.02;
-		const shakeDuration = 500;	//in milliseconds
-		const startTime = performance.now();
+		const	shakeMagnitude = (force * 0.04) + Math.random() * force * 0.02;
+		const	shakeDuration = 500;	//in milliseconds
+		const	startTime = performance.now();
 
 		//	Fade shake until 'shakeDirection' fades
-		const animateShake = (now: number) => {
-			const progress = Math.min((now - startTime) / shakeDuration, 1);
-			const fade = 1 - progress;
-			const cam = camera as any;
+		const	animateShake = (now: number) => {
+			const	progress = Math.min((now - startTime) / shakeDuration, 1);
+			const	fade = 1 - progress;
+			const	cam = camera as any;
 
 			if (progress < 1) {
 				camera.alpha = cam.og_alpha + (Math.random() - 0.5) * shakeMagnitude * fade;

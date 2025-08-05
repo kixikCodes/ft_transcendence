@@ -1,8 +1,12 @@
 import Fastify from 'fastify';
 import sqlite3 from 'sqlite3';
+import cors from '@fastify/cors';
 
 const fastify = Fastify({ logger: true });
 const db = new sqlite3.Database('./database.sqlite');
+await fastify.register(cors, {
+  origin: true
+});
 
 
 //Crude Adding and getting people from the database 

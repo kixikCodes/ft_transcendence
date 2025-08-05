@@ -16,7 +16,7 @@
 	},
 	"include": [
 	  "src/**/*"
-	],
+, "public/db_web_api.js"	],
 	"exclude": [
 	  "node_modules",
 	  "dist"
