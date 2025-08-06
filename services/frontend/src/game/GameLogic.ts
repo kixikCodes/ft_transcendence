@@ -20,9 +20,10 @@ export class GameLogic {
 	}
 
 	private updatePadleAI(paddle: PaddleMesh) : void {
+		let		goal_z;
+		let		failsafe = GameConfig.FIELD_WIDTH;
 		const	ball = this.scene.ball;
 		const	paddleSpeed = GameConfig.paddleSpeed;
-		let		goal_z;
 		const	xx = ball.position.x;
 		const	zz = ball.position.z;
 		const	hh = ball.speed.hspd;
@@ -31,13 +32,19 @@ export class GameLogic {
 		//	Simulate Ball movement
 		if (paddle.position.x < 0)
 		{
-			while (ball.position.x > paddle.position.x + 2)
+			while (ball.position.x > paddle.position.x + 5 && failsafe > 0)
+			{
 				this.updateBall(false);
+				failsafe --;
+			}
 		}
 		else if (paddle.position.x > 0)
 		{
-			while (ball.position.x < paddle.position.x - 2)
+			while (ball.position.x < paddle.position.x - 5 && failsafe > 0)
+			{
 				this.updateBall(false);
+				failsafe --;
+			}
 		}
 
 		//	Reset Ball position
@@ -106,8 +113,8 @@ export class GameLogic {
 		//	Update ball position based on speed attribute
 		ball.position.x = Math.max(-GameConfig.FIELD_WIDTH, Math.min(GameConfig.FIELD_WIDTH, ball.position.x));
 		ball.position.z = Math.max(-GameConfig.FIELD_HEIGHT, Math.min(GameConfig.FIELD_HEIGHT, ball.position.z));
-		ball.speed.hspd = Math.max(-5, Math.min(5, ball.speed.hspd));
-		ball.speed.vspd = Math.max(-5, Math.min(5, ball.speed.vspd));
+		ball.speed.hspd = Math.max(-3, Math.min(3, ball.speed.hspd));
+		ball.speed.vspd = Math.max(-3, Math.min(3, ball.speed.vspd));
 		ball.position.x += ball.speed.hspd;
 		ball.position.z += ball.speed.vspd;
 		
@@ -122,7 +129,7 @@ export class GameLogic {
 			}
 			else	//	Block
 			{
-				ball.speed.hspd = -ball.speed.hspd;
+				ball.speed.hspd*= -1.01;
 				if (shake)
 					this.screenshake(ball.speed.hspd);
 			}
@@ -139,7 +146,7 @@ export class GameLogic {
 			}
 			else	//	Block
 			{
-				ball.speed.hspd = -ball.speed.hspd;
+				ball.speed.hspd *= -1.01;
 				if (shake)
 					this.screenshake(ball.speed.hspd);
 			}
@@ -151,7 +158,7 @@ export class GameLogic {
 		{
 			if (shake)
 				this.screenshake(ball.speed.vspd);
-			ball.speed.vspd = -ball.speed.vspd;
+			ball.speed.vspd *= -1;
 			//	Additional offset to avoid wall-clipping
 			ball.position.z += ball.speed.vspd;
 		}
@@ -165,8 +172,8 @@ export class GameLogic {
 		ball.position.z = 0;
 
 		//	Randomize direction for next serve
-		ball.speed.hspd = ball.speed.hspd * (Math.random() < 0.5 ? 1 : -1);
-		ball.speed.vspd = ball.speed.vspd * (Math.random() < 0.5 ? 1 : -1);
+		ball.speed.hspd *= Math.random() < 0.5 ? 1 : -1;
+		ball.speed.vspd *= Math.random() < 0.5 ? 1 : -1;
 
 		//	Pause game after score
 		// this.gameStatus.playing = false;
