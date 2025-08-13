@@ -44,13 +44,14 @@
       : `ws://${location.host}/ws`;
 
     form.addEventListener('submit', async (e) => {
+	  console.log('Form submitted');
       e.preventDefault();
       const name = nameInput.value.trim();
       if (!name) return;
 
       try {
         // Register a user and add him to the users table (for now)
-        const res = await fetch('/users', {
+        const res = await fetch('http://localhost:3000/users', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name })
