@@ -7,10 +7,8 @@ export class GameConfig {
 	public static readonly	PADDLE_ACC = 0.2;
 
 	private static settings: GameSettings = {
-		ai_difficulty:	'MEDIUM',
-		opponent:		'AI',
-		player_one_ai:	false,
-		player_two_ai:	false
+		ai_difficulty:	'HARD',
+		opponent:		'AI'
 	};
 
 	public static get ballSpeed() : Speed {

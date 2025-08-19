@@ -28,8 +28,6 @@ export interface PaddleMesh extends BABYLON.Mesh {
 export interface GameSettings {
 	opponent:		'PERSON' | 'REMOTE' | 'AI';
 	ai_difficulty:	'EASY' | 'MEDIUM' | 'HARD';
-	player_one_ai:	false | true;
-	player_two_ai:	false | true;
 }
 
 export interface GameScene extends BABYLON.Scene {
@@ -37,6 +35,8 @@ export interface GameScene extends BABYLON.Scene {
 	ball:		BallMesh;
 	paddle1:	PaddleMesh;
 	paddle2:	PaddleMesh;
+	leftWall:	BABYLON.Mesh;
+	rightWall:	BABYLON.Mesh;
 	upperWall:	BABYLON.Mesh;
 	bottomWall:	BABYLON.Mesh;
 	scores:		BABYLON.DynamicTexture;

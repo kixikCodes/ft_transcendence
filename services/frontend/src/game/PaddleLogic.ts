@@ -48,6 +48,23 @@ export class PaddleLogic {
 	}
 
 
+	public dualPaddleControl(paddle: PaddleMesh) : number {
+		let		move_dir = 0;
+		const	paddleSpeed = GameConfig.paddleSpeed;
+
+		//	Move paddle
+		if (this.keys["w"] || this.keys["W"]
+		|| this.keys["ArrowUp"])
+			move_dir = 1;
+		else if (this.keys["s"] || this.keys["S"]
+		|| this.keys["ArrowDown"])
+			move_dir = -1;
+		
+		//	Return direction and speed to move at
+		return (move_dir * paddleSpeed);
+	}
+
+
 
 	public aiPaddleControl(paddle: PaddleMesh) : number {
 		const	ball = this.scene.ball;
@@ -55,11 +72,11 @@ export class PaddleLogic {
 		const	paddle_side = (paddle.position.x < 0) ? 0 : 1;
 	
 		//	Update AI's view of the field once per second
-		if (performance.now() - this.lastPredictionTime[paddle_side] > 1000
-		&& (paddle_side == 0 && this.scene.ball.speed.hspd < 0) || (paddle_side == 1 && this.scene.ball.speed.hspd > 0))
+		if (performance.now() - this.lastPredictionTime[paddle_side] > 1000)
+		/*&& ((paddle_side == 0 && this.scene.ball.speed.hspd < 0)
+		|| (paddle_side == 1 && this.scene.ball.speed.hspd > 0)))*/
 		{
-			let	failsafe = GameConfig.FIELD_WIDTH;
-			let	goal_z = 0;
+			let	failsafe = GameConfig.FIELD_WIDTH * 1.5;
 			let	ball_xx = ball.position.x;
 			let	ball_zz = ball.position.z;
 			let	ball_hh = ball.speed.hspd;
@@ -72,8 +89,8 @@ export class PaddleLogic {
 			//	Offset ball direciton a bit to make it less accurate on MEDIUM difficulty
 			if (GameConfig.getAiDifficulty == 'MEDIUM')
 			{
-				ball.speed.hspd += 0.1 - (Math.random() * 0.2);
-				ball.speed.vspd += 0.1 - (Math.random() * 0.2);
+				ball.speed.hspd += 0.05 - (Math.random() * 0.1);
+				ball.speed.vspd += 0.05 - (Math.random() * 0.1);
 			}
 	
 			//	Simulate ball movement
@@ -105,11 +122,11 @@ export class PaddleLogic {
 			this.lastPredictionTime[paddle_side] = performance.now();
 		}
 	
-		//	Paddle is close to goal, don't move
-		if (Math.abs(this.paddle_goal_pos[paddle_side] - paddle.position.z) < GameConfig.paddleSpeed)
-			return (0);
-	
 		//	Return direction for paddle to move
-		return (Math.sign(this.paddle_goal_pos[paddle_side] - paddle.position.z) * paddleSpeed);
+		if (Math.abs(this.paddle_goal_pos[paddle_side] - paddle.position.z) > GameConfig.paddleSpeed / 2)
+			return (Math.sign(this.paddle_goal_pos[paddle_side] - paddle.position.z) * paddleSpeed);
+	
+		//	Paddle is close to goal, don't move
+		return (0);
 	}
 }

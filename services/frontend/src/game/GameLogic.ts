@@ -47,7 +47,7 @@ export class GameLogic {
 		if (GameConfig.getOpponent == 'AI')
 		{
 			p1_spd = this.paddleLogic.aiPaddleControl(paddle1);
-			p2_spd = this.paddleLogic.playerPaddleControl(paddle2);
+			p2_spd = this.paddleLogic.aiPaddleControl(paddle2);
 		}
 
 		//	Move in direction
@@ -90,7 +90,8 @@ export class GameLogic {
 				return;
 			
 			//	Goal
-			if (ball.position.z > (paddle1.position.z + paddleSize / 2) || ball.position.z < (paddle1.position.z - paddleSize / 2))
+			if (ball.position.z - 1 > (paddle1.position.z + paddleSize / 2)
+			|| ball.position.z + 1 < (paddle1.position.z - paddleSize / 2))
 			{
 				this.resetBall();
 				this.gameStatus.p2Score ++;
@@ -109,7 +110,8 @@ export class GameLogic {
 				return;
 			
 			//	Goal
-			if (ball.position.z > (paddle2.position.z + paddleSize / 2) || ball.position.z < (paddle2.position.z - paddleSize / 2))
+			if (ball.position.z - 1 > (paddle2.position.z + paddleSize / 2)
+			|| ball.position.z + 1 < (paddle2.position.z - paddleSize / 2))
 			{
 				if (!real_mode)
 					return;

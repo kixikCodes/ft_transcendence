@@ -25,7 +25,6 @@ export class SceneBuilder {
 		this.createGameObjects(scene);
 		this.setUpMaterials(scene);
 		this.positionObjects(scene);
-
 		return (scene);
 	}
 
@@ -117,17 +116,31 @@ export class SceneBuilder {
 			speed: { hspd: 0, vspd: 0 }, // Unique speed object for paddle2
 		}) as PaddleMesh;
 
-		//	Upper Wall
-		scene.upperWall = BABYLON.MeshBuilder.CreateBox("upperwall", {
+		//	Left Wall
+		scene.leftWall = BABYLON.MeshBuilder.CreateBox("leftWall", {
 			height : 1,
-			width : GameConfig.FIELD_WIDTH - 10,
+			width : 1,
+			depth : GameConfig.FIELD_HEIGHT,
+		}, scene)
+
+		//	Right Wall
+		scene.rightWall = BABYLON.MeshBuilder.CreateBox("rightWall", {
+			height : 1,
+			width : 1,
+			depth : GameConfig.FIELD_HEIGHT,
+		}, scene)
+
+		//	Upper Wall
+		scene.upperWall = BABYLON.MeshBuilder.CreateBox("upperWall", {
+			height : 1,
+			width : GameConfig.FIELD_WIDTH,
 			depth : 1,
 		}, scene)
 
 		//	Bottom Wall
 		scene.bottomWall = BABYLON.MeshBuilder.CreateBox("bottomWall", {
 			height : 1,
-			width : GameConfig.FIELD_WIDTH - 10,
+			width : GameConfig.FIELD_WIDTH,
 			depth : 1,
 		}, scene)
 	}
@@ -140,6 +153,8 @@ export class SceneBuilder {
 		scene.ball.material = mainMaterial;
 		scene.paddle1.material = mainMaterial;
 		scene.paddle2.material = mainMaterial;
+		scene.leftWall.material = mainMaterial;
+		scene.rightWall.material = mainMaterial;
 		scene.upperWall.material = mainMaterial;
 		scene.bottomWall.material = mainMaterial;
 	}
@@ -150,7 +165,9 @@ export class SceneBuilder {
 		scene.ball.position = new BABYLON.Vector3(0, 0.5, 0);
 		scene.paddle1.position = new BABYLON.Vector3(-GameConfig.FIELD_WIDTH / 2 + 5, 0.5, 0);
 		scene.paddle2.position = new BABYLON.Vector3(GameConfig.FIELD_WIDTH / 2 - 5, 0.5, 0);
-		scene.upperWall.position = new BABYLON.Vector3(0, 0.5, GameConfig.FIELD_HEIGHT / 2 - 2.5);
-		scene.bottomWall.position = new BABYLON.Vector3(0, 0.5, -GameConfig.FIELD_HEIGHT / 2 + 2.5);
+		scene.leftWall.position = new BABYLON.Vector3(-GameConfig.FIELD_WIDTH / 2, 0.5, 0);
+		scene.rightWall.position = new BABYLON.Vector3(GameConfig.FIELD_WIDTH / 2, 0.5, 0);
+		scene.upperWall.position = new BABYLON.Vector3(0, 0.5, GameConfig.FIELD_HEIGHT / 2);
+		scene.bottomWall.position = new BABYLON.Vector3(0, 0.5, -GameConfig.FIELD_HEIGHT / 2);
 	}
 }
