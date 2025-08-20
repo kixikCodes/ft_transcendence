@@ -21,6 +21,7 @@ export class PaddleLogic {
 	}
 
 
+	//	Player controls left (W:S) or right (Up:Down) paddle
 	public playerPaddleControl(paddle: PaddleMesh) : number {
 		let		move_dir = 0;
 		const	paddleSpeed = GameConfig.paddleSpeed;
@@ -48,6 +49,7 @@ export class PaddleLogic {
 	}
 
 
+	//	Player conrrols paddle (W:S / Up:Down)
 	public dualPaddleControl(paddle: PaddleMesh) : number {
 		let		move_dir = 0;
 		const	paddleSpeed = GameConfig.paddleSpeed;
@@ -65,7 +67,7 @@ export class PaddleLogic {
 	}
 
 
-
+	//	AI controls paddle
 	public aiPaddleControl(paddle: PaddleMesh) : number {
 		const	ball = this.scene.ball;
 		const	paddleSpeed = GameConfig.paddleSpeed;
@@ -128,5 +130,11 @@ export class PaddleLogic {
 	
 		//	Paddle is close to goal, don't move
 		return (0);
+	}
+
+
+	//	Paddle is moved my getting position of opponents paddle
+	public remotePaddleControl(paddle: PaddleMesh) : number {
+		return (goal_position);
 	}
 }
