@@ -34,7 +34,8 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - backend_data:/app
+      - ./services/backend/data:/app/data
+      # - backend_data:/app
 
 volumes:
   backend_data:
