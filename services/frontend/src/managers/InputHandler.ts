@@ -57,7 +57,6 @@ export class InputHandler {
 
 		if (dir !== this.lastDir) {
 			this.lastDir = dir;
-			console.log("Sending remote input:", dir);
 			this.remote.sendInput(dir);
 		}
 	}

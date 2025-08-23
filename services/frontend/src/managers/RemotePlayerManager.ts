@@ -2,8 +2,7 @@ import { ServerState } from '../interfaces/GameInterfaces';
 
 type ServerMsg =
 	| { type: 'chat'; userId: number; content: string; }
-	| { type: 'input'; state: ServerState; }
-	| { type: 'join'; roomId: string; userId: number; }
+	| { type: 'state'; state: ServerState; }
 
 export class RemotePlayerManager
 {
@@ -42,14 +41,15 @@ export class RemotePlayerManager
 			// Parse it
 			const msg: ServerMsg = JSON.parse(event.data);
 
-			console.log(`Message received from server: ${JSON.stringify(msg)}`);
             switch (msg.type) {
               case 'chat':
                 console.log(`Chat message received from user ${msg.userId}: ${msg.content}`);
-                this.chatHandler?.({ userId: msg.userId, content: msg.content });
+				// This will call the append_log via this.onChat
+				this.chatHandler?.({ userId: msg.userId, content: msg.content });
                 break;
-              case 'input':
-                console.log(`Game state update received`);
+              case 'state':
+                console.log(`Game state update received from the server`);
+				// This will call the applyServerState via this.onState
 				this.stateHandler?.(msg.state);
                 break;
             }
@@ -77,40 +77,45 @@ export class RemotePlayerManager
 
 	// Registers a callback function to handle game state updates received from the server.
 	public onState(callback: (s: ServerState) => void): void {
+		// This triggers the applyServerState method in main.ts because it was binded in setupChatHandlers
 		this.stateHandler = callback;
 	}
 
 	// Registers a callback function to handle chat messages received from the server to update the chat log.
 	public onChat(callback: (msg: { userId: number; content: string }) => void): void {
+		// This triggers the append_log method in main.ts because it was binded in setupChatHandlers
 		this.chatHandler = callback;
 	}
 
-	// Sends a chat message to the server.
+	// Sends a chat message to the server and the lambda function that was binded to the msg-send-button was fired
 	public sendChatMessage(content: string): void {
-		// Sends a chat message to the server.
-		console.log(`Sending chat message from user ${this.userID}: ${content}`);
+		console.log("Sending chat message to the server:", content);
 		this.send({ type: 'chat', userId: this.userID, content });
 	}
 
+	// If the user pressed the "Join" button in a multiplayer game
 	public join(roomId: string): void {
 		// Sends a message to the server to join a game
+		console.log(`User ${this.userID} joining room ${roomId}`);
 		this.send({ type: 'join', roomId, userId: this.userID });
 	}
 
+	// If the sendRemoteInput method in InputHandler detects a change in direction
 	public sendInput(dir: -1 | 0 | 1): void {
 		// Sends the user's input direction to the server.
+		console.log("Sending remote input:", dir);
 		this.send({ type: 'input', userId: this.userID, direction: dir });
 	}
 
-	// Indicates that the user is ready to play.
+	// If the user pressed the "Ready" button in a multiplayer game
 	public ready(): void {
-		// Sends a message to the server indicating that the user is ready to play.
+		// Sends a message to the server indicating that the user is ready to play
+		console.log(`User ${this.userID} is ready`);
 		this.send({ type: 'ready' });
 	}
 
-	// Sends a message to the server via WebSocket.
+	// Sends a message to the server
 	public send(obj: unknown): void {
-		// console.log(`Sending message from user ${this.userID}: ${message}`);
 		if (this.ws && this.ws.readyState === WebSocket.OPEN) {
 			this.ws.send(JSON.stringify(obj));
 		}

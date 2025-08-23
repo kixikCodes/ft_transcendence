@@ -155,6 +155,7 @@ export class App {
 		// Set up send handler and bind eventlistener to the send button and input field
 		// Fire the lambda function when the user clicks the send button or presses Enter in the input field
 		this.Chat.send_handler((msg: string) => {
+			console.log("Sending chat message");
 			this.playerManager?.sendChatMessage(msg);
 			this.Chat.append_log(`Me: ${msg}`);
 		});

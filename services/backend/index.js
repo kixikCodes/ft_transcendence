@@ -2,6 +2,10 @@ import Fastify from "fastify";
 import sqlite3 from "sqlite3";
 import cors from "@fastify/cors";
 import websocket from "@fastify/websocket";
+import { getOrCreateRoom, rooms } from "./gameRooms.js";
+import { initDb } from "./initDatabases.js";
+import { broadcaster } from "./utils.js";
+import { startGameLoop } from "./game.js";
 
 const fastify = Fastify({ logger: true });
 // const db = new sqlite3.Database('./database.sqlite');
@@ -14,50 +18,18 @@ await fastify.register(cors, {
 });
 await fastify.register(websocket);
 
-// Initialize the database and create tables if they do not exist
-// Tabels: users, messages, settings
-const initDb = () => {
-  db.serialize(() => {
-    // Create users table with id <INTEGER PRIMARY KEY> and name <TEXT>
-    db.run(
-      "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT)"
-    );
-    // Create messages table with id <INTEGER PRIMARY KEY>, userId <INTEGER>, content <TEXT>, timestamp <DATETIME DEFAULT CURRENT_TIMESTAMP>
-    db.run(`CREATE TABLE IF NOT EXISTS messages (
-		  id INTEGER PRIMARY KEY,
-		  userId INTEGER,
-		  content TEXT,
-		  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-		  FOREIGN KEY(userId) REFERENCES users(id)
-		)`);
-    // Create settings table with id <INTEGER PRIMARY KEY>, key <TEXT UNIQUE>, value <TEXT>
-    db.run(
-      "CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY, key TEXT UNIQUE, value TEXT)"
-    );
-    // Insert default settings if they do not exist
-    db.run("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", [
-      "app_name",
-      "Fastify WebSocket Example",
-    ]);
-    // Insert default version if it does not exist
-    db.run("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", [
-      "version",
-      "1.0.0",
-    ]);
-  });
-};
 // Call the initDb function to create the tables by the time the server starts
-initDb();
+initDb(db);
 
-fastify.get("/users", (request, reply) => {
-  db.all("SELECT * FROM users", [], (err, rows) => {
-    if (err) {
-      reply.code(500).send({ error: err.message });
-    } else {
-      reply.send(rows);
-    }
-  });
-});
+// fastify.get("/users", (request, reply) => {
+//   db.all("SELECT * FROM users", [], (err, rows) => {
+//     if (err) {
+//       reply.code(500).send({ error: err.message });
+//     } else {
+//       reply.send(rows);
+//     }
+//   });
+// });
 
 // Test for adding a user via POST request to the database
 fastify.post("/users", (request, reply) => {
@@ -76,19 +48,19 @@ fastify.post("/users", (request, reply) => {
 });
 
 // Database inspection endpoint
-fastify.get("/db/info", (request, reply) => {
-  db.get("SELECT COUNT(*) as count FROM users", [], (err, row) => {
-    if (err) {
-      reply.code(500).send({ error: err.message });
-    } else {
-      reply.send({
-        table: "users",
-        userCount: row.count,
-        timestamp: new Date().toISOString(),
-      });
-    }
-  });
-});
+// fastify.get("/db/info", (request, reply) => {
+//   db.get("SELECT COUNT(*) as count FROM users", [], (err, row) => {
+//     if (err) {
+//       reply.code(500).send({ error: err.message });
+//     } else {
+//       reply.send({
+//         table: "users",
+//         userCount: row.count,
+//         timestamp: new Date().toISOString(),
+//       });
+//     }
+//   });
+// });
 
 // WebSocket Set
 const clients = new Set();
@@ -110,37 +82,47 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
     try {
       const parsed = JSON.parse(message);
       const { type } = parsed;
-      console.log("Received message type:", type);
+      console.log("Backend: Received message type:", type);
 
-      console.log("parsed:", parsed);
-	  
       if (type === "chat") {
-        console.log("Trying to store chat message in the database");
         const { userId, content } = parsed;
         db.run("INSERT INTO messages (userId, content) VALUES (?, ?)", [
           userId,
           content,
         ]);
-
         // Send the message, which the client sent to all connected clients
-        for (const client of clients) {
-          if (client !== ws && client.readyState === 1) {
-            console.log("Broadcasting message to other clients");
-            client.send(
-              JSON.stringify({ type: "chat", userId: userId, content: content })
-            );
-          }
-        }
+        broadcaster(clients, ws, message);
+
+      } else if (type === "join") {
+        // Join a game room
+        const { roomId, userId } = parsed;
+        const room = getOrCreateRoom(roomId);
+        room.addPlayer(userId, ws);
+        // Response to the client, which side the player is on and the current state to render the initial game state
+        const initialState = {
+          side: room.players.get(ws).side,
+          ...room.state,
+        };
+        ws.send(JSON.stringify({ type: "join", state: initialState }));
+
+      } else if (type === "ready") {
+        const { userId } = parsed;
+        // Set the player as ready
+        const room = rooms.get(ws._roomId);
+        room.getPlayer(ws).ready = true;
+        startGameLoop(room);
+        console.log(`User ${userId} is ready`);
+
+      } else if (type === "input") {
+        console.log("Backend: Received input from client:", parsed);
+        const { direction } = parsed;
+        // The paddle position is updated => dir * speed / framerate (speed is 40 for now) / framerate (100ms for now)
+        if (ws._side === "left")
+          rooms.get(ws._roomId).state.p1Y += direction * 40 / 100;
+        else if (ws._side === "right")
+          rooms.get(ws._roomId).state.p2Y += direction * 40 / 100;
+        // broadcaster(clients, ws, { type: "input", content: content });
       }
-	  else if (type === 'input') {
-		// Handle input from the client
-		console.log("Received input from client:", parsed);
-
-
-	  }
-	  else if (type === 'join') {
-		// Join a game room
-	  }
     } catch (e) {
       console.error("Invalid JSON received:", message);
       return;
@@ -156,3 +138,38 @@ fastify.listen({ port: 3000, host: "0.0.0.0" }, (err) => {
   }
   fastify.log.info("Backend running on port 3000");
 });
+
+export function startGameLoop(room) {
+  // If the game is already started, do nothing
+  if (room.state.started) return;
+
+  // If both players are ready, start the game
+  if (room.players.size === 2 && Array.from(room.players.values()).every((p) => p.ready)) {
+    room.state.started = true;
+    // Initialize timestamp
+    room.state.timestamp = Date.now();
+    // Start the game loop, which updates the game state and broadcasts it to the players every 33ms
+    room.loopInterval = setInterval(() => loop(room), 33);
+  }
+}
+
+export function stopRoom(room, roomId) {
+  // Destroy the room and stop the game loop
+  if (room.loopInterval) clearInterval(room.loopInterval);
+  rooms.delete(roomId);
+}
+
+// This function is called every 33ms to update the game state based on the current state and player input.
+// Then broadcast it to the players, so that they can render the new state
+export function loop(room) {
+  // Update the ball position. New position += speed / framerate (speed is 50 for now) / framerate (33ms for now)
+
+  // If ball > FIELD_H or ball < -FIELD_H, invert Y speed
+
+  // If its a hit on the left side (ballX < -FIELD_W), check if ballY is within paddle range. If not score for right player and reset ball
+  // If its a hit on the right side (ballX > FIELD_W), check if ballY is within paddle range. If not score for left player and reset ball
+
+  // If it was in the paddle range, invert X speed and increase speed by 10%
+
+  // broadcast the new state to the players
+}
