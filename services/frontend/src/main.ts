@@ -2,9 +2,96 @@
 /// <reference types="babylonjs" />
 */
 
-import { GameManager } from './managers/index.js';
+import { GameManager, UserManager } from './managers/index.js';
 import { InputHandler } from './managers/index.js';
 import { RemotePlayerManager } from './managers/index.js';
+
+class Login { // This class handles the whole user login and registration process
+	private accountButton;
+	private accountModal;
+	private closeModal;
+	private modalTitle;
+	private accountForm;
+	private loginBtn;
+	private switchToRegister;
+	private modalError;
+	private isLogin: boolean = true;
+
+	constructor(private userManager: UserManager) { // Constructor takes the UserManager as a parameter
+		console.log("init login");
+		this.accountButton = document.getElementById('accountButton') as HTMLButtonElement;
+		this.accountModal = document.getElementById('accountModal') as HTMLDivElement;
+		this.closeModal = document.getElementById('closeModal') as HTMLButtonElement;
+		this.modalTitle = document.getElementById('modalTitle') as HTMLHeadingElement;
+		this.accountForm = document.getElementById('accountForm') as HTMLFormElement;
+		this.loginBtn = document.getElementById('loginBtn') as HTMLButtonElement;
+		this.switchToRegister = document.getElementById('switchToRegister') as HTMLButtonElement;
+		this.modalError = document.getElementById('modalError') as HTMLDivElement;
+	}
+
+	public init_registration(): void { // Initialize event listeners for the login/register modal
+		this.accountButton.addEventListener('click', this.onAccountButtonClick.bind(this));
+		this.closeModal.addEventListener('click', this.onCloseModalClick.bind(this));
+		this.switchToRegister.addEventListener('click', this.onSwitchToRegisterClick.bind(this));
+		this.accountForm.addEventListener('submit', this.onAccountFormSubmit.bind(this));
+	}
+
+	private onAccountButtonClick(): void {
+		this.accountModal.style.display = 'block';
+		this.modalTitle.textContent = 'Login';
+		this.loginBtn.textContent = 'Login';
+		this.isLogin = true;
+		this.modalError.textContent = '';
+	}
+
+	private onCloseModalClick(): void {
+		this.accountModal.style.display = 'none';
+	}
+
+	private onSwitchToRegisterClick(): void {
+		this.isLogin = !this.isLogin;
+		if (this.isLogin) {
+			this.modalTitle.textContent = 'Login';
+			this.loginBtn.textContent = 'Login';
+		} else {
+			this.modalTitle.textContent = 'Register';
+			this.loginBtn.textContent = 'Register';
+		}
+		this.modalError.textContent = '';
+	}
+
+	private async onAccountFormSubmit(event: Event): Promise<void> {
+		event.preventDefault();
+		const usernameInput = document.getElementById('modalUsername') as HTMLInputElement;
+		const passwordInput = document.getElementById('modalPassword') as HTMLInputElement;
+		const username = usernameInput.value.trim();
+		const password = passwordInput.value.trim();
+		if (!username || !password) {
+			this.modalError.textContent = 'Username and password are required.';
+			return;
+		}
+		if (this.isLogin) { // Call the login method from UserManager
+			const success = await this.userManager.login(username, password);
+			if (success) {
+				this.accountModal.style.display = 'none';
+				alert('Login successful!');
+				// From this point we might have a user session used in the chat and game
+			} else {
+				this.modalError.textContent = 'Login failed. Please check your credentials.';
+			}
+		} else { // Call the register method from UserManager
+			const success = await this.userManager.register(username, 'epicgamer@gmail.com', password);
+			if (success) {
+				this.accountModal.style.display = 'none';
+				alert('Registration successful!');
+				// This calls eventually reaches the backend and creates a new user in the database
+				// (I hardcoded the email field for now bcs there is no UI for it yet)
+			} else {
+				this.modalError.textContent = 'Registration failed. Username may already be taken.';
+			}
+		}
+	}
+}
 
 class Chat {
     private form;
@@ -83,55 +170,20 @@ export class App {
 	private Chat: Chat;
 	private gameManager: GameManager;
 	private playerManager?: RemotePlayerManager;
+	private userManager: UserManager;
+	private Login: Login;
 
 	constructor() {
 		// For the UI and chat management and for subscribing to events on the chat (like in Angular)
 		this.Chat = new Chat();
 		// For the game logic and management
 		this.gameManager = new GameManager();
-		// Initialize the user, when submitting the form
-		this.init_registration();
+		// For user registration and login
+		this.userManager = new UserManager();
+		this.Login = new Login(this.userManager);
+		this.Login.init_registration();
 		// Welcome the user
 		console.log('Welcome to the game!');
-	}
-
-	private async init_registration(): Promise<void> {
-		const form = this.Chat.get_form();
-		// Add an event listener to the form to handle user registration when the form is submitted
-		form.addEventListener('submit', async (e) => {
-			e.preventDefault();
-			console.log('User registration form submitted');
-			await this.register_user();
-		});
-	}
-
-	private async register_user(): Promise<void> {
-		try {
-			// Get the username from the input field
-			const name = this.Chat.get_username();
-			if (!name) return;
-
-			// Send a POST request to the server to register the user
-			const res = await fetch('http:localhost:3000/users', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ name })
-			});
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			const user = await res.json();
-
-			if (user)
-			{
-				this.setupChatHandlers(user);
-				this.Chat.append_log(`Registered as "${user.name}" (id=${user.id})`);
-			}
-			this.Chat.clear_name_input();
-		}
-		catch (err) {
-			this.Chat.append_log('Registration failed.');
-			console.error(err);
-			return;
-		}
 	}
 
 	private setupChatHandlers(user: { id: number, name: string }): void {

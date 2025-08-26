@@ -32,68 +32,13 @@
 	</div>
 
 	<div id="chat">
-		<textarea id="log" cols="50" rows="10" readonly></textarea><br />
-		<input id="msg" type="text" placeholder="Type a message..." />
+		<textarea id="log" cols="50" rows="10" readonly></textarea><br/>
+		<input id="msg" type="text" placeholder="Type a message..."/>
 		<button id="send">Send</button>
 	</div>
 	<script src="https://cdn.babylonjs.com/babylon.js"></script>
 	<script type="module" src="/db_web_api.js"></script>
 	<script type="module" src="main.js"></script>
 </body>
-
-
-<script type="module">
-	import { UserManager } from '../src/managers/UserManager.js';
-
-	const userManager = new UserManager();
-
-	const accountButton = document.getElementById('accountButton');
-	const accountModal = document.getElementById('accountModal');
-	const closeModal = document.getElementById('closeModal');
-	const modalTitle = document.getElementById('modalTitle');
-	const accountForm = document.getElementById('accountForm');
-	const loginBtn = document.getElementById('loginBtn');
-	const switchToRegister = document.getElementById('switchToRegister');
-	const modalError = document.getElementById('modalError');
-
-	let isLogin = true;
-
-	accountButton.onclick = () => {
-		accountModal.style.display = 'block';
-		modalTitle.textContent = 'Login';
-		loginBtn.textContent = 'Login';
-		isLogin = true;
-		modalError.textContent = '';
-	};
-
-	closeModal.onclick = () => {
-		accountModal.style.display = 'none';
-	};
-
-	switchToRegister.onclick = () => {
-		isLogin = !isLogin;
-		modalTitle.textContent = isLogin ? 'Login' : 'Register';
-		loginBtn.textContent = isLogin ? 'Login' : 'Register';
-		modalError.textContent = '';
-	};
-
-	accountForm.onsubmit = async (e) => {
-		e.preventDefault();
-		const username = document.getElementById('modalUsername').value;
-		const password = document.getElementById('modalPassword').value;
-		let success = false;
-		if (isLogin) {
-			success = await userManager.login(username, password);
-		} else {
-			success = await userManager.register(username, password);
-		}
-		if (success) {
-			accountModal.style.display = 'none';
-			alert('Success!');
-		} else {
-			modalError.textContent = 'Failed. Please check your credentials or try again.';
-		}
-	};
-</script>
 
 </html>
