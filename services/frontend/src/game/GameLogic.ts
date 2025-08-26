@@ -20,7 +20,7 @@ export class GameLogic {
 	}
 
 	public update() : void {
-		if (GameConfig.getOpponent === 'REMOTE') {
+		if (GameConfig.getOpponent !== 'REMOTE') {
 			this.updatePaddles();
 			this.updateBall(true);
 		}

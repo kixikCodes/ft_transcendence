@@ -47,6 +47,19 @@ fastify.post("/users", (request, reply) => {
   });
 });
 
+fastify.get("/initState", (request, reply) => {
+  const initialState = {
+    p1Y: 0,
+    p2Y: 0,
+    ballX: 0,
+    ballY: 0,
+    scoreL: 0,
+    scoreR: 0,
+    started: false,
+  };
+  reply.send(initialState);
+});
+
 // Database inspection endpoint
 // fastify.get("/db/info", (request, reply) => {
 //   db.get("SELECT COUNT(*) as count FROM users", [], (err, row) => {

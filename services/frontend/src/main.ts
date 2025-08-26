@@ -88,10 +88,10 @@ export class App {
 	constructor() {
 		// For the UI and chat management and for subscribing to events on the chat (like in Angular)
 		this.Chat = new Chat();
-		// For the game logic and management
-		this.gameManager = new GameManager();
 		// Initialize the user, when submitting the form
 		this.init_registration();
+		// After registering a user the game manager will be initialized for setting up the game
+		this.gameManager = new GameManager();
 	}
 
 	private async init_registration(): Promise<void> {

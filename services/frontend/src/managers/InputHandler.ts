@@ -11,10 +11,13 @@ export class InputHandler {
 	private lastDir: -1 | 0 | 1 = 0;
 
 	constructor (game: GameStatus) {
+		// The game status object to update based on user input
 		this.game = game;
+		// Set up event listeners for key presses and releases
 		this.setUpEventListeners();
 	}
 
+	// This is called from the GameManager when a RemotePlayerManager is created to bind the remote player to the input handler
 	public bindRemote(remote: RemotePlayerManager) : void {
 		this.remote = remote;
 		this.isRemote = true;
