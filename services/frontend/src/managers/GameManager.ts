@@ -45,25 +45,34 @@ export class GameManager {
     this.sceneBuilder = new SceneBuilder("gameCanvas");
 	// Create the 3D scene and store it in the scene property
     this.scene = this.sceneBuilder.createScene();
-	// Initialize the game logic to handle the core game mechanics
-	// send the scene to the game logic for accessing the game objects (ball/paddles)
-	// send the game status to the game logic for checking if the game is running/playing
-	// send the input handler's keys to the game logic for processing user inputs
+
+	// GameLogic: Updates paddles with PaddleLogic and the ball (in case of local players).
+	// And updates the scores texture on the game map
+	// send the scene for accessing the game objects (ball/paddles)
+	// send the game status for accessing scores
+	// send the input handler's keys for processing user inputs
     this.gameLogic = new GameLogic(
       this.scene,
       this.gameStatus,
       this.inputHandler.getKeys()
     );
 	
+	// Paddle logic in case of local players (move paddles based on user input or AI)
+	// send the scene for accessing ball/paddles objects
+	// gameStatus (scores/running/playing) has currently no use in PaddleLogic
+	// send the input handlers key object for processing user inputs to move the paddles
     this.paddleLogic = new PaddleLogic(
       this.scene,
       this.gameStatus,
       this.inputHandler.getKeys()
     );
 
+	// Link the gamelogic to the paddlelogic to access the updateBall() function
     this.paddleLogic.setGameLogic(this.gameLogic);
+	// Link the paddlelogic to the gamelogic to access the paddle control functions
     this.gameLogic.setPaddleLogic(this.paddleLogic);
     this.setUpEventListeners();
+	// Start the game loop which updates the game state and renders the scene
     this.startGameLoop();
   }
 
