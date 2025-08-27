@@ -1,8 +1,10 @@
 import { ServerState } from '../interfaces/GameInterfaces';
+import { GameConfig, WorldConfig } from '../game/GameConfig';
 
 type ServerMsg =
 	| { type: 'chat'; userId: number; content: string; }
 	| { type: 'state'; state: ServerState; }
+	| { type: 'join'; side: number; gameConfig: WorldConfig | null; state: ServerState; }
 
 export class RemotePlayerManager
 {
@@ -12,9 +14,10 @@ export class RemotePlayerManager
 	// Array of callback functions to handle incoming messages.
 	// private callbacks: ((msg: string) => void)[] = [];
 	// Binding callbacks to state change events
-	private stateHandler?: (s: ServerState) => void;
+	private stateHandler?: ( s: ServerState ) => void;
 	// Binding callbacks to chat events
-	private chatHandler?: (msg: { userId: number; content: string }) => void;
+	private chatHandler?: ( msg: { userId: number; content: string } ) => void;
+	private joinHandler?: ( msg: { side: number; gameConfig: WorldConfig | null; state: ServerState } ) => void;
 
 	constructor(id: number) {
 		// ws/wss: WebSocket protocol, secure (wss) or insecure (ws)
@@ -52,6 +55,13 @@ export class RemotePlayerManager
 				// This will call the applyServerState via this.onState
 				this.stateHandler?.(msg.state);
                 break;
+			  case 'join':
+				console.log(`Joined game, initial state received from the server`);
+				this.joinHandler?.({ side: msg.side, gameConfig: msg.gameConfig, state: msg.state });
+				break;
+			  default:
+				console.warn(`Unknown message type received: ${(msg as any).type}`);
+				break;
             }
             // Loop through all callbacks/subscribers and call the binded function:
 			// (this.Chat.append_log(msg) in main.ts for this specific user) to append the message to the user's chat log.
@@ -87,6 +97,10 @@ export class RemotePlayerManager
 		this.chatHandler = callback;
 	}
 
+	public onJoin(callback: (msg: { side: number; gameConfig: WorldConfig | null; state: ServerState }) => void): void {
+		this.joinHandler = callback;
+	}
+	
 	// Sends a chat message to the server and the lambda function that was binded to the msg-send-button was fired
 	public sendChatMessage(content: string): void {
 		console.log("Sending chat message to the server:", content);

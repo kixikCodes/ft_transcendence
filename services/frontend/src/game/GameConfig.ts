@@ -1,10 +1,17 @@
 import { Speed, GameSettings } from "../interfaces/GameInterfaces.js";
 
+export type WorldConfig = { FIELD_WIDTH: number; FIELD_HEIGHT: number; PADDLE_RATIO: number; PADDLE_ACC: number; };
+
+// fieldWidth: 100,
+// fieldHeight: 40,
+// paddleRatio: 1/6,
+// paddleAcc: 0.2,
+
 export class GameConfig {
-	public static readonly	FIELD_WIDTH = 100;
-	public static readonly	FIELD_HEIGHT = 40;
-	public static readonly	PADDLE_RATIO = 1/6;
-	public static readonly	PADDLE_ACC = 0.2;
+	private static	FIELD_WIDTH = 100;
+	private static	FIELD_HEIGHT = 40;
+	private static	PADDLE_RATIO = 1/6;
+	private static	PADDLE_ACC = 0.2;
 
 	private static settings: GameSettings = {
 		ai_difficulty:	'HARD',
@@ -39,5 +46,21 @@ export class GameConfig {
 	
 	public static get getOpponent() {
 		return (this.settings.opponent);
+	}
+
+	public static getConfig(): WorldConfig {
+		return {
+			FIELD_WIDTH: this.FIELD_WIDTH,
+			FIELD_HEIGHT: this.FIELD_HEIGHT,
+			PADDLE_RATIO: this.PADDLE_RATIO,
+			PADDLE_ACC: this.PADDLE_ACC,
+		}
+	};
+
+	public static setConfig(cfg: WorldConfig) {
+		this.FIELD_WIDTH = cfg.FIELD_WIDTH;
+		this.FIELD_HEIGHT = cfg.FIELD_HEIGHT;
+		this.PADDLE_RATIO = cfg.PADDLE_RATIO;
+		this.PADDLE_ACC = cfg.PADDLE_ACC;
 	}
 }

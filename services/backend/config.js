@@ -1,0 +1,6 @@
+export const WORLD_CONFIG = {
+	FIELD_WIDTH: 100,
+	FIELD_HEIGHT: 40,
+	PADDLE_RATIO: 1/6,
+	PADDLE_ACC: 0.2,
+};

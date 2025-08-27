@@ -6,6 +6,7 @@ import { GameManager } from './managers/index.js';
 import { InputHandler } from './managers/index.js';
 import { RemotePlayerManager } from './managers/index.js';
 import { ServerState } from './interfaces/GameInterfaces';
+import { WorldConfig } from './game/GameConfig.js';
 
 class Chat {
     private form;
@@ -150,6 +151,12 @@ export class App {
 		// Bind applyServerState to the RemotePlayerManager to update the game state when a state message arrives from the server
 		this.playerManager.onState((state) => {
 			this.gameManager.applyServerState(state);
+		});
+
+		this.playerManager.onJoin((msg: { side: number; gameConfig: WorldConfig | null; state: ServerState }) => {
+			this.gameManager.setConfig(msg.gameConfig);
+			this.gameManager.applyServerState(msg.state);
+			this.Chat.append_log(`Joined the game as Player ${msg.side === 1 ? '1 (left)' : '2 (right)'}!`);
 		});
 
 		// Set up send handler and bind eventlistener to the send button and input field

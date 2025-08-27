@@ -27,14 +27,14 @@ export class InputHandler {
 		const startButton = document.getElementById("startButton") as HTMLButtonElement;
 		
 		if (startButton) {
-			if (this.isRemote && this.remote) {
-				this.remote.ready();
-			}
-			else {
-				this.game.playing = true;
-			}
 			startButton.addEventListener("click", () => {
-				this.game.playing = true;
+				if (this.isRemote && this.remote) {
+					// Send via the remote player manager to the server, that the player is ready. It sets the ready state for this player in a room to true
+					this.remote.ready();
+				} else {
+					// In case of local players just set GameStatus.playing to true, so the GameLoop updates the GameStatus (ball/paddles/score-texture) continuously
+					this.game.playing = true;
+				}
 			});
 		}
 

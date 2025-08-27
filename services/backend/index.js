@@ -5,7 +5,8 @@ import websocket from "@fastify/websocket";
 import { getOrCreateRoom, rooms } from "./gameRooms.js";
 import { initDb } from "./initDatabases.js";
 import { broadcaster } from "./utils.js";
-import { startGameLoop } from "./game.js";
+import { WORLD_CONFIG } from "./config.js";
+// import { startGameLoop } from "./game.js";
 
 const fastify = Fastify({ logger: true });
 // const db = new sqlite3.Database('./database.sqlite');
@@ -47,18 +48,18 @@ fastify.post("/users", (request, reply) => {
   });
 });
 
-fastify.get("/initState", (request, reply) => {
-  const initialState = {
-    p1Y: 0,
-    p2Y: 0,
-    ballX: 0,
-    ballY: 0,
-    scoreL: 0,
-    scoreR: 0,
-    started: false,
-  };
-  reply.send(initialState);
-});
+// fastify.get("/initState", (request, reply) => {
+//   const initialState = {
+//     p1Y: 0,
+//     p2Y: 0,
+//     ballX: 0,
+//     ballY: 0,
+//     scoreL: 0,
+//     scoreR: 0,
+//     started: false,
+//   };
+//   reply.send(initialState);
+// });
 
 // Database inspection endpoint
 // fastify.get("/db/info", (request, reply) => {
@@ -112,18 +113,14 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
         const room = getOrCreateRoom(roomId);
         room.addPlayer(userId, ws);
         // Response to the client, which side the player is on and the current state to render the initial game state
-        const initialState = {
-          side: room.players.get(ws).side,
-          ...room.state,
-        };
-        ws.send(JSON.stringify({ type: "join", state: initialState }));
+        ws.send(JSON.stringify({ type: "join", side: ws._side, gameConfig: WORLD_CONFIG, state: room.state }));
 
       } else if (type === "ready") {
         const { userId } = parsed;
         // Set the player as ready
         const room = rooms.get(ws._roomId);
         room.getPlayer(ws).ready = true;
-        startGameLoop(room);
+        startLoop(room);
         console.log(`User ${userId} is ready`);
 
       } else if (type === "input") {
@@ -131,10 +128,9 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
         const { direction } = parsed;
         // The paddle position is updated => dir * speed / framerate (speed is 40 for now) / framerate (100ms for now)
         if (ws._side === "left")
-          rooms.get(ws._roomId).state.p1Y += direction * 40 / 100;
+			updatePaddle(rooms.get(ws._roomId), direction, "p1Y");
         else if (ws._side === "right")
-          rooms.get(ws._roomId).state.p2Y += direction * 40 / 100;
-        // broadcaster(clients, ws, { type: "input", content: content });
+			updatePaddle(rooms.get(ws._roomId), direction, "p2Y");
       }
     } catch (e) {
       console.error("Invalid JSON received:", message);
@@ -143,6 +139,11 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
   });
 });
 
+export function updatePaddle(room, direction, paddle) {
+	if (!room || !room.state.started) return;
+	if (direction === 1 && room.state[paddle] <= PADDLE_WIDTH / 2) return;
+
+}
 // Start the Fastify server on port 3000 hosting on all interfaces
 fastify.listen({ port: 3000, host: "0.0.0.0" }, (err) => {
   if (err) {
@@ -152,7 +153,7 @@ fastify.listen({ port: 3000, host: "0.0.0.0" }, (err) => {
   fastify.log.info("Backend running on port 3000");
 });
 
-export function startGameLoop(room) {
+export function startLoop(room) {
   // If the game is already started, do nothing
   if (room.state.started) return;
 
@@ -163,6 +164,8 @@ export function startGameLoop(room) {
     room.state.timestamp = Date.now();
     // Start the game loop, which updates the game state and broadcasts it to the players every 33ms
     room.loopInterval = setInterval(() => loop(room), 33);
+	// Send to the backend log that the game has started in a specific room
+	console.log("Game started in room", room.id);
   }
 }
 
