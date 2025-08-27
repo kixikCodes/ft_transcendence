@@ -1,4 +1,4 @@
-import { GameStatus, GameScene } from "../interfaces/GameInterfaces.js";
+import { GameStatus, GameScene, ServerState } from "../interfaces/GameInterfaces.js";
 import {
 	GameConfig,
 	GameLogic,
@@ -44,7 +44,8 @@ export class GameManager {
 			p1Score: 0,
 			p2Score: 0,
 			running: true,
-			playing: false
+			playing: false,
+			timestamp: null,
 		};
 		this.conf = GameConfig.getConfig();
 		// Initialize the input handler to manage user inputs. It listens for user actions and updates the given status object accordingly
@@ -85,33 +86,33 @@ export class GameManager {
 		this.startGameLoop();
 	}
 
-	private async init_game_status(): Promise<void> {
-		try {
-			const res = await fetch("http://localhost:3000/initState", {
-				method: "GET",
-				headers: { "Content-Type": "application/json" },
-			});
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			const initState = await res.json();
-			this.gameStatus = {
-				p1Score: initState.scoreL || 0,
-				p2Score: initState.scoreR || 0,
-				running: true,
-				playing: initState.started || false,
-			};
-			return;
-		}
-		catch (err) {
-			console.error("Failed to initialize game status:", err);
-			this.gameStatus = {
-				p1Score: 0,
-				p2Score: 0,
-				running: true,
-				playing: false,
-			};
-			return;
-		}
-	}
+	// private async init_game_status(): Promise<void> {
+	// 	try {
+	// 		const res = await fetch("http://localhost:3000/initState", {
+	// 			method: "GET",
+	// 			headers: { "Content-Type": "application/json" },
+	// 		});
+	// 		if (!res.ok) throw new Error(`HTTP ${res.status}`);
+	// 		const initState = await res.json();
+	// 		this.gameStatus = {
+	// 			p1Score: initState.scoreL || 0,
+	// 			p2Score: initState.scoreR || 0,
+	// 			running: true,
+	// 			playing: initState.started || false,
+	// 		};
+	// 		return;
+	// 	}
+	// 	catch (err) {
+	// 		console.error("Failed to initialize game status:", err);
+	// 		this.gameStatus = {
+	// 			p1Score: 0,
+	// 			p2Score: 0,
+	// 			running: true,
+	// 			playing: false,
+	// 		};
+	// 		return;
+	// 	}
+	// }
 
 	private setUpEventListeners(): void {
 		window.addEventListener("resize", () => {
@@ -185,15 +186,7 @@ export class GameManager {
 	//   }
 
 	// Function which is triggered, when the server sends a state update (in case of remote players)
-	public applyServerState(s: {
-		p1Y: number;
-		p2Y: number;
-		ballX: number;
-		ballY: number;
-		scoreL: number;
-		scoreR: number;
-		started: boolean;
-	}) {
+	public applyServerState(s: ServerState): void {
 		console.log("Applying server state:", s);
 		this.scene.paddle1.position.z = s.p1Y;
 		this.scene.paddle2.position.z = s.p2Y;
@@ -216,6 +209,12 @@ export class GameManager {
 		this.scene = this.sceneBuilder.rebuild(this.conf);
 		this.gameLogic.setScene(this.scene);
 		this.paddleLogic.setScene(this.scene);
+	}
+
+	public setTimestamp(timestamp: Date) {
+		// The timestamp can be used for synchronizing the game start between multiple clients
+		console.log("Game started at:", timestamp);
+		this.gameStatus.timestamp = timestamp;
 	}
 }
 

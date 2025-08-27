@@ -159,6 +159,11 @@ export class App {
 			this.Chat.append_log(`Joined the game as Player ${msg.side === 1 ? '1 (left)' : '2 (right)'}!`);
 		});
 
+		this.playerManager.onStart((timestamp: Date) => {
+			this.gameManager.setTimestamp(timestamp);
+			this.Chat.append_log('Game started!');
+		});
+
 		// Set up send handler and bind eventlistener to the send button and input field
 		// Fire the lambda function when the user clicks the send button or presses Enter in the input field
 		this.Chat.send_handler((msg: string) => {

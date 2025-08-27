@@ -1,4 +1,4 @@
-import { GameConfig } from "./GameConfig.js";
+import { GameConfig, WorldConfig } from "./GameConfig.js";
 import { GameLogic } from "./GameLogic.js";
 import { GameScene, GameStatus, BallMesh, PaddleMesh } from "../interfaces/GameInterfaces.js";
 
@@ -14,6 +14,10 @@ export class PaddleLogic {
 		this.scene = scene;
 		this.gameStatus = gameStatus;
 		this.keys = keys;
+	}
+
+	private get conf(): WorldConfig {
+		return GameConfig.getConfig();
 	}
 
 	public setGameLogic(gameLogic: GameLogic): void {
@@ -78,7 +82,7 @@ export class PaddleLogic {
 		if (performance.now() - this.lastPredictionTime[paddle_side] > 1000)
 		/*&& ((paddle_side == 0 && this.scene.ball.speed.hspd < 0)
 		|| (paddle_side == 1 && this.scene.ball.speed.hspd > 0)))*/ {
-			let failsafe = GameConfig.FIELD_WIDTH * 1.5;
+			let failsafe = this.conf.FIELD_WIDTH * 1.5;
 			let ball_xx = ball.position.x;
 			let ball_zz = ball.position.z;
 			let ball_hh = ball.speed.hspd;

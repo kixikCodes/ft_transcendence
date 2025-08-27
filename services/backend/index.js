@@ -96,6 +96,7 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
     try {
       const parsed = JSON.parse(message);
       const { type } = parsed;
+	  console.log("parsed message:", parsed);
       console.log("Backend: Received message type:", type);
 
       if (type === "chat") {
@@ -105,7 +106,7 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
           content,
         ]);
         // Send the message, which the client sent to all connected clients
-        broadcaster(clients, ws, message);
+        broadcaster(clients, ws, JSON.stringify({ type: 'chat', userId: userId, content: content }));
 
       } else if (type === "join") {
         // Join a game room
@@ -166,6 +167,8 @@ export function startLoop(room) {
     room.loopInterval = setInterval(() => loop(room), 33);
 	// Send to the backend log that the game has started in a specific room
 	console.log("Game started in room", room.id);
+	// Broadcast the timestamp to the players
+	broadcaster(room.players, null, JSON.stringify({ type: "start", timestamp: room.state.timestamp }));
   }
 }
 
@@ -178,6 +181,7 @@ export function stopRoom(room, roomId) {
 // This function is called every 33ms to update the game state based on the current state and player input.
 // Then broadcast it to the players, so that they can render the new state
 export function loop(room) {
+	console.log("Game loop tick for room", room.id);
   // Update the ball position. New position += speed / framerate (speed is 50 for now) / framerate (33ms for now)
 
   // If ball > FIELD_H or ball < -FIELD_H, invert Y speed

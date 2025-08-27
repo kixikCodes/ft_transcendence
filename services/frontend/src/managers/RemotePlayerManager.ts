@@ -5,27 +5,31 @@ type ServerMsg =
 	| { type: 'chat'; userId: number; content: string; }
 	| { type: 'state'; state: ServerState; }
 	| { type: 'join'; side: number; gameConfig: WorldConfig | null; state: ServerState; }
+	| { type: 'start'; timestamp: Date; }
 
-export class RemotePlayerManager
-{
+// ({ type: "start", timestamp: room.state.timestamp }));
+
+export class RemotePlayerManager {
+	private queue: unknown[] = [];
 	userID: number;
 	// WebSocket instance to communicate with the server.
 	private ws?: WebSocket;
 	// Array of callback functions to handle incoming messages.
 	// private callbacks: ((msg: string) => void)[] = [];
 	// Binding callbacks to state change events
-	private stateHandler?: ( s: ServerState ) => void;
+	private stateHandler?: (s: ServerState) => void;
 	// Binding callbacks to chat events
-	private chatHandler?: ( msg: { userId: number; content: string } ) => void;
-	private joinHandler?: ( msg: { side: number; gameConfig: WorldConfig | null; state: ServerState } ) => void;
+	private chatHandler?: (msg: { userId: number; content: string }) => void;
+	private joinHandler?: (msg: { side: number; gameConfig: WorldConfig | null; state: ServerState }) => void;
+	private startHandler?: (timestamp: Date) => void;
 
 	constructor(id: number) {
 		// ws/wss: WebSocket protocol, secure (wss) or insecure (ws)
 		// location.protocol: 'http:' or 'https:'
 		// location.host: current host and port (e.g., 'localhost:3000', 'localhost:8443')
 		const WS_URL = location.protocol === 'https:'
-		? `wss://${location.host}/ws`
-		: `ws://${location.host}/ws`;
+			? `wss://${location.host}/ws`
+			: `ws://${location.host}/ws`;
 
 		this.userID = id;
 		this.initialize(WS_URL);
@@ -37,6 +41,12 @@ export class RemotePlayerManager
 		this.ws = new WebSocket(WS_URL);
 		this.ws.onopen = () => {
 			this.send(`User ${this.userID} connected`);
+
+			while (this.queue.length && this.ws?.readyState === WebSocket.OPEN) {
+				const obj = this.queue.shift();
+				console.log("Flushing queued msg:", JSON.stringify(obj));
+				this.ws!.send(JSON.stringify(obj));
+			}
 		}
 
 		// When a message arrives from the server
@@ -44,26 +54,30 @@ export class RemotePlayerManager
 			// Parse it
 			const msg: ServerMsg = JSON.parse(event.data);
 
-            switch (msg.type) {
-              case 'chat':
-                console.log(`Chat message received from user ${msg.userId}: ${msg.content}`);
-				// This will call the append_log via this.onChat
-				this.chatHandler?.({ userId: msg.userId, content: msg.content });
-                break;
-              case 'state':
-                console.log(`Game state update received from the server`);
-				// This will call the applyServerState via this.onState
-				this.stateHandler?.(msg.state);
-                break;
-			  case 'join':
-				console.log(`Joined game, initial state received from the server`);
-				this.joinHandler?.({ side: msg.side, gameConfig: msg.gameConfig, state: msg.state });
-				break;
-			  default:
-				console.warn(`Unknown message type received: ${(msg as any).type}`);
-				break;
-            }
-            // Loop through all callbacks/subscribers and call the binded function:
+			switch (msg.type) {
+				case 'chat':
+					console.log(`Chat message received from user ${msg.userId}: ${msg.content}`);
+					// This will call the append_log via this.onChat
+					this.chatHandler?.({ userId: msg.userId, content: msg.content });
+					break;
+				case 'state':
+					console.log(`Game state update received from the server`);
+					// This will call the applyServerState via this.onState
+					this.stateHandler?.(msg.state);
+					break;
+				case 'join':
+					console.log(`Joined game, initial state received from the server`);
+					this.joinHandler?.({ side: msg.side, gameConfig: msg.gameConfig, state: msg.state });
+					break;
+				case 'start':
+					console.log(`Game start signal received from the server`);
+					this.startHandler?.(msg.timestamp);
+					break;
+				default:
+					console.warn(`Unknown message type received: ${(msg as any).type}`);
+					break;
+			}
+			// Loop through all callbacks/subscribers and call the binded function:
 			// (this.Chat.append_log(msg) in main.ts for this specific user) to append the message to the user's chat log.
 			// for (const callback of this.callbacks) {
 			// 	console.log(`Calling callback for user ${this.userID}`);
@@ -71,7 +85,7 @@ export class RemotePlayerManager
 			// }
 		}
 
-        // When this client closes the connection:
+		// When this client closes the connection:
 		this.ws.onclose = () => console.log("Disconnected");
 
 		// When there is an error with the connection:
@@ -100,7 +114,11 @@ export class RemotePlayerManager
 	public onJoin(callback: (msg: { side: number; gameConfig: WorldConfig | null; state: ServerState }) => void): void {
 		this.joinHandler = callback;
 	}
-	
+
+	public onStart(callback: (timestamp: Date) => void): void {
+		this.startHandler = callback;
+	}
+
 	// Sends a chat message to the server and the lambda function that was binded to the msg-send-button was fired
 	public sendChatMessage(content: string): void {
 		console.log("Sending chat message to the server:", content);
@@ -126,13 +144,18 @@ export class RemotePlayerManager
 		// Sends a message to the server indicating that the user is ready to play
 		console.log(`User ${this.userID} is ready`);
 		this.send({ type: 'ready' });
+		console.log("Ready message sent to server");
 	}
 
 	// Sends a message to the server
 	public send(obj: unknown): void {
-		if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-			this.ws.send(JSON.stringify(obj));
+		if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+			console.warn("WS not open yet; queueing:", obj);
+			this.queue.push(obj);
+			return;
 		}
+		console.log("Sending message to server:", JSON.stringify(obj));
+		this.ws.send(JSON.stringify(obj));
 	}
 
 	// Disconnects the WebSocket connection and clears the callbacks.
