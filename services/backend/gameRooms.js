@@ -6,14 +6,17 @@ export const rooms = new Map();
 //   ballY: number,
 //   scoreL: number,
 //   scoreR: number,
-//   started: boolean
+//   started: boolean,
+//   timestamp: Date
 
 export class Room {
   constructor(id) {
     this.id = id;
     this.players = new Map();
     this.state = this.initState();
+    this.ballV = this.resetBall();
     this.loopInterval = null;
+    this.inputs = { left: 0, right: 0 };
   }
 
   initState() {
@@ -27,6 +30,12 @@ export class Room {
       started: false,
       timestamp: null
     };
+  }
+
+  resetBall() {
+    const hspd = Math.random() < 0.5 ? 0.5 : -0.5;
+    const vspd = Math.random() < 0.5 ? 0.5 : -0.5;
+    return ({ hspd: hspd, vspd: vspd });
   }
 
   addPlayer(userId, ws) {

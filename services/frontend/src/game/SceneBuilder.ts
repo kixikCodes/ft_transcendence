@@ -185,9 +185,9 @@ export class SceneBuilder {
 		//	Positions as vector3 (x, y, z) / (width, height, depth)
 		scene.ball.position = new BABYLON.Vector3(0, 0.5, 0);
 		scene.paddle1.position =
-			new BABYLON.Vector3(-this.conf.FIELD_WIDTH / 2 + 5, 0.5, 0);
+			new BABYLON.Vector3(-this.conf.FIELD_WIDTH / 2 + 3, 0.5, 0);
 		scene.paddle2.position =
-			new BABYLON.Vector3(this.conf.FIELD_WIDTH / 2 - 5, 0.5, 0);
+			new BABYLON.Vector3(this.conf.FIELD_WIDTH / 2 - 3, 0.5, 0);
 		scene.leftWall.position =
 			new BABYLON.Vector3(-this.conf.FIELD_WIDTH / 2, 0.5, 0);
 		scene.rightWall.position =

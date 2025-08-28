@@ -153,13 +153,13 @@ export class App {
 			this.gameManager.applyServerState(state);
 		});
 
-		this.playerManager.onJoin((msg: { side: number; gameConfig: WorldConfig | null; state: ServerState }) => {
+		this.playerManager.onJoin((msg: { side: string; gameConfig: WorldConfig | null; state: ServerState }) => {
 			this.gameManager.setConfig(msg.gameConfig);
 			this.gameManager.applyServerState(msg.state);
-			this.Chat.append_log(`Joined the game as Player ${msg.side === 1 ? '1 (left)' : '2 (right)'}!`);
+			this.Chat.append_log(`Joined the game as Player ${msg.side === "left" ? '1 (left)' : '2 (right)'}!`);
 		});
 
-		this.playerManager.onStart((timestamp: Date) => {
+		this.playerManager.onStart((timestamp: Number) => {
 			this.gameManager.setTimestamp(timestamp);
 			this.Chat.append_log('Game started!');
 		});

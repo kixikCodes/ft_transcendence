@@ -4,8 +4,8 @@ import { GameConfig, WorldConfig } from '../game/GameConfig';
 type ServerMsg =
 	| { type: 'chat'; userId: number; content: string; }
 	| { type: 'state'; state: ServerState; }
-	| { type: 'join'; side: number; gameConfig: WorldConfig | null; state: ServerState; }
-	| { type: 'start'; timestamp: Date; }
+	| { type: 'join'; side: string; gameConfig: WorldConfig | null; state: ServerState; }
+	| { type: 'start'; timestamp: Number; }
 
 // ({ type: "start", timestamp: room.state.timestamp }));
 
@@ -20,8 +20,8 @@ export class RemotePlayerManager {
 	private stateHandler?: (s: ServerState) => void;
 	// Binding callbacks to chat events
 	private chatHandler?: (msg: { userId: number; content: string }) => void;
-	private joinHandler?: (msg: { side: number; gameConfig: WorldConfig | null; state: ServerState }) => void;
-	private startHandler?: (timestamp: Date) => void;
+	private joinHandler?: (msg: { side: string; gameConfig: WorldConfig | null; state: ServerState }) => void;
+	private startHandler?: (timestamp: Number) => void;
 
 	constructor(id: number) {
 		// ws/wss: WebSocket protocol, secure (wss) or insecure (ws)
@@ -61,7 +61,6 @@ export class RemotePlayerManager {
 					this.chatHandler?.({ userId: msg.userId, content: msg.content });
 					break;
 				case 'state':
-					console.log(`Game state update received from the server`);
 					// This will call the applyServerState via this.onState
 					this.stateHandler?.(msg.state);
 					break;
@@ -111,11 +110,11 @@ export class RemotePlayerManager {
 		this.chatHandler = callback;
 	}
 
-	public onJoin(callback: (msg: { side: number; gameConfig: WorldConfig | null; state: ServerState }) => void): void {
+	public onJoin(callback: (msg: { side: string; gameConfig: WorldConfig | null; state: ServerState }) => void): void {
 		this.joinHandler = callback;
 	}
 
-	public onStart(callback: (timestamp: Date) => void): void {
+	public onStart(callback: (timestamp: Number) => void): void {
 		this.startHandler = callback;
 	}
 
@@ -143,7 +142,7 @@ export class RemotePlayerManager {
 	public ready(): void {
 		// Sends a message to the server indicating that the user is ready to play
 		console.log(`User ${this.userID} is ready`);
-		this.send({ type: 'ready' });
+		this.send({ type: 'ready', userId: this.userID });
 		console.log("Ready message sent to server");
 	}
 

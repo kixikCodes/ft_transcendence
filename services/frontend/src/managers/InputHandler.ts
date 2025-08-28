@@ -42,12 +42,13 @@ export class InputHandler {
 			if (!this.usedKeys.includes(ev.key)) return;
 			console.log("Key pressed:", ev.key);
 			this.keys[ev.key] = true;
+			if (this.isRemote) this.sendRemoteInput();
 		});
 
 		document.addEventListener("keyup", (ev) => {
 			if (!this.usedKeys.includes(ev.key)) return;
-			if (this.isRemote) this.sendRemoteInput();
 			this.keys[ev.key] = false;
+			if (this.isRemote) this.sendRemoteInput();
 		});
 	}
 
@@ -57,7 +58,6 @@ export class InputHandler {
 		const up = this.keys["w"] || this.keys["ArrowUp"] || this.keys["W"];
 		const down = this.keys["s"] || this.keys["ArrowDown"] || this.keys["S"];
 		const dir = up && !down ? 1 : (!up && down ? -1 : 0);
-
 		if (dir !== this.lastDir) {
 			this.lastDir = dir;
 			this.remote.sendInput(dir);

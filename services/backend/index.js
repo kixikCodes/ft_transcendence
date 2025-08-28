@@ -96,7 +96,7 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
     try {
       const parsed = JSON.parse(message);
       const { type } = parsed;
-	  console.log("parsed message:", parsed);
+      console.log("parsed message:", parsed);
       console.log("Backend: Received message type:", type);
 
       if (type === "chat") {
@@ -127,11 +127,11 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
       } else if (type === "input") {
         console.log("Backend: Received input from client:", parsed);
         const { direction } = parsed;
-        // The paddle position is updated => dir * speed / framerate (speed is 40 for now) / framerate (100ms for now)
-        if (ws._side === "left")
-			updatePaddle(rooms.get(ws._roomId), direction, "p1Y");
-        else if (ws._side === "right")
-			updatePaddle(rooms.get(ws._roomId), direction, "p2Y");
+        const room = rooms.get(ws._roomId);
+        if (!room || !room.state.started) return;
+
+        if (ws._side === "left")  room.inputs.left  = direction;
+        else if (ws._side === "right") room.inputs.right = direction;
       }
     } catch (e) {
       console.error("Invalid JSON received:", message);
@@ -140,11 +140,22 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
   });
 });
 
-export function updatePaddle(room, direction, paddle) {
-	if (!room || !room.state.started) return;
-	if (direction === 1 && room.state[paddle] <= PADDLE_WIDTH / 2) return;
+// export function updatePaddle(room, direction, paddle) {
+//   if (!room || !room.state.started) return;
+//   if (direction === 1 && room.state[paddle] >= (WORLD_CONFIG.FIELD_HEIGHT / 2 - WORLD_CONFIG.paddleSize / 2)) return;
+//   if (direction === -1 && room.state[paddle] <= (-WORLD_CONFIG.FIELD_HEIGHT / 2 + WORLD_CONFIG.paddleSize / 2)) return;
+//   if (direction === -1)
+//     console.log("Direction was -1");
+//   if (direction === 1)
+//     console.log("Direction was 1");
+//   console.log(room.state[paddle], " <= ", (-WORLD_CONFIG.FIELD_HEIGHT / 2 + WORLD_CONFIG.paddleSize / 2));
+//   console.log(`Updating paddle ${paddle} in room ${room.id} by ${direction * WORLD_CONFIG.paddleSpeed}`);
+//   console.log("Before update:", room.state[paddle]);
+//   room.state[paddle] += direction * WORLD_CONFIG.paddleSpeed;
+//   console.log("After update:", room.state[paddle]);
+// }
 
-}
+
 // Start the Fastify server on port 3000 hosting on all interfaces
 fastify.listen({ port: 3000, host: "0.0.0.0" }, (err) => {
   if (err) {
@@ -155,6 +166,13 @@ fastify.listen({ port: 3000, host: "0.0.0.0" }, (err) => {
 });
 
 export function startLoop(room) {
+  console.log("World config:", WORLD_CONFIG);
+  console.log("FIELD_WIDTH:", WORLD_CONFIG.FIELD_WIDTH);
+  console.log("FIELD_HEIGHT:", WORLD_CONFIG.FIELD_HEIGHT);
+  console.log("PADDLE_RATIO:", WORLD_CONFIG.PADDLE_RATIO);
+  console.log("PADDLE_ACC:", WORLD_CONFIG.PADDLE_ACC);
+  console.log("Paddle Size:", WORLD_CONFIG.paddleSize);
+  console.log("Paddle Speed:", WORLD_CONFIG.paddleSpeed);
   // If the game is already started, do nothing
   if (room.state.started) return;
 
@@ -163,12 +181,12 @@ export function startLoop(room) {
     room.state.started = true;
     // Initialize timestamp
     room.state.timestamp = Date.now();
-    // Start the game loop, which updates the game state and broadcasts it to the players every 33ms
-    room.loopInterval = setInterval(() => loop(room), 33);
-	// Send to the backend log that the game has started in a specific room
-	console.log("Game started in room", room.id);
-	// Broadcast the timestamp to the players
-	broadcaster(room.players, null, JSON.stringify({ type: "start", timestamp: room.state.timestamp }));
+    // Start the game loop, which updates the game state and broadcasts it to the players every 16ms
+    room.loopInterval = setInterval(() => loop(room), 16);
+    // Send to the backend log that the game has started in a specific room
+    console.log("Game started in room", room.id);
+    // Broadcast the timestamp to the players
+    broadcaster(room.players.keys(), null, JSON.stringify({ type: "start", timestamp: room.state.timestamp }));
   }
 }
 
@@ -181,15 +199,58 @@ export function stopRoom(room, roomId) {
 // This function is called every 33ms to update the game state based on the current state and player input.
 // Then broadcast it to the players, so that they can render the new state
 export function loop(room) {
-	console.log("Game loop tick for room", room.id);
+
+  room.state.p1Y = Math.max(-WORLD_CONFIG.FIELD_HEIGHT / 2 + WORLD_CONFIG.paddleSize / 2,
+    Math.min(WORLD_CONFIG.FIELD_HEIGHT / 2 - WORLD_CONFIG.paddleSize / 2, room.state.p1Y));
+  room.state.p2Y = Math.max(-WORLD_CONFIG.FIELD_HEIGHT / 2 + WORLD_CONFIG.paddleSize / 2,
+    Math.min(WORLD_CONFIG.FIELD_HEIGHT / 2 - WORLD_CONFIG.paddleSize / 2, room.state.p2Y));
+
+  // console.log("Game loop tick for room", room.id);
   // Update the ball position. New position += speed / framerate (speed is 50 for now) / framerate (33ms for now)
+  WORLD_CONFIG.FIELD_HEIGHT;
+  room.state.ballX = Math.max(-WORLD_CONFIG.FIELD_WIDTH / 2, Math.min(WORLD_CONFIG.FIELD_WIDTH / 2, room.state.ballX));
+  room.state.ballY = Math.max(-WORLD_CONFIG.FIELD_HEIGHT / 2, Math.min(WORLD_CONFIG.FIELD_HEIGHT / 2, room.state.ballY));
+  // room.ballV.hspd = Math.max(-1.25, Math.min(1.25, room.ballV.hspd));
+  // room.ballV.vspd = Math.max(-1.25, Math.min(1.25, room.ballV.vspd));
+  room.state.ballX += room.ballV.hspd;
+  room.state.ballY += room.ballV.vspd;
 
-  // If ball > FIELD_H or ball < -FIELD_H, invert Y speed
-
-  // If its a hit on the left side (ballX < -FIELD_W), check if ballY is within paddle range. If not score for right player and reset ball
-  // If its a hit on the right side (ballX > FIELD_W), check if ballY is within paddle range. If not score for left player and reset ball
-
-  // If it was in the paddle range, invert X speed and increase speed by 10%
+  // Check if there is a collision on the left paddle
+  if (room.state.ballX <= 4 - WORLD_CONFIG.FIELD_WIDTH / 2) {
+    // Check if the ball is outside the paddle range => Goal for player 2
+    if (room.state.ballY < room.state.p1Y - WORLD_CONFIG.paddleSize / 2 ||
+      room.state.ballY > room.state.p1Y + WORLD_CONFIG.paddleSize / 2) {
+      room.state.scoreR += 1;
+      room.state.ballX = 0;
+      room.state.ballY = 0;
+      room.ballV = room.resetBall();
+    }
+    else {
+      // Hit the paddle, reflect the ball
+      room.ballV.hspd *= -1.1;
+    }
+  }
+  // Check if there is a collision on the right paddle
+  else if (room.state.ballX >= WORLD_CONFIG.FIELD_WIDTH / 2 - 4) {
+    // Check if the ball is outside the paddle range => Goal for player 1
+    if (room.state.ballY < room.state.p2Y - WORLD_CONFIG.paddleSize / 2 ||
+      room.state.ballY > room.state.p2Y + WORLD_CONFIG.paddleSize / 2) {
+      room.state.scoreL += 1;
+      room.state.ballX = 0;
+      room.state.ballY = 0;
+      room.ballV = room.resetBall();
+    }
+    else {
+      // Hit the paddle, reflect the ball
+      room.ballV.hspd *= -1.1;
+    }
+  }
+  // Colission with top and bottom wall
+  if (room.state.ballY <= -WORLD_CONFIG.FIELD_HEIGHT / 2 || room.state.ballY >= WORLD_CONFIG.FIELD_HEIGHT / 2) {
+    room.ballV.vspd *= -1;
+  }
 
   // broadcast the new state to the players
+  broadcaster(room.players.keys(), null, JSON.stringify({ type: "state", state: room.state }));
+  console.log("Broadcasted state:", room.state);
 }

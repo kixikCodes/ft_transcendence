@@ -86,34 +86,6 @@ export class GameManager {
 		this.startGameLoop();
 	}
 
-	// private async init_game_status(): Promise<void> {
-	// 	try {
-	// 		const res = await fetch("http://localhost:3000/initState", {
-	// 			method: "GET",
-	// 			headers: { "Content-Type": "application/json" },
-	// 		});
-	// 		if (!res.ok) throw new Error(`HTTP ${res.status}`);
-	// 		const initState = await res.json();
-	// 		this.gameStatus = {
-	// 			p1Score: initState.scoreL || 0,
-	// 			p2Score: initState.scoreR || 0,
-	// 			running: true,
-	// 			playing: initState.started || false,
-	// 		};
-	// 		return;
-	// 	}
-	// 	catch (err) {
-	// 		console.error("Failed to initialize game status:", err);
-	// 		this.gameStatus = {
-	// 			p1Score: 0,
-	// 			p2Score: 0,
-	// 			running: true,
-	// 			playing: false,
-	// 		};
-	// 		return;
-	// 	}
-	// }
-
 	private setUpEventListeners(): void {
 		window.addEventListener("resize", () => {
 			this.sceneBuilder.getEngine().resize();
@@ -187,7 +159,7 @@ export class GameManager {
 
 	// Function which is triggered, when the server sends a state update (in case of remote players)
 	public applyServerState(s: ServerState): void {
-		console.log("Applying server state:", s);
+		// console.log("Applying server state:", s);
 		this.scene.paddle1.position.z = s.p1Y;
 		this.scene.paddle2.position.z = s.p2Y;
 		this.scene.ball.position.x = s.ballX;
@@ -202,16 +174,22 @@ export class GameManager {
 	}
 
 	public setConfig(config: WorldConfig | null) {
+		console.log("Trying to set new game config:", config);
 		if (!config) return;
 
 		GameConfig.setConfig(config);
 		this.conf = config;
+		console.log("Updated game config:", this.conf);
+		console.log("FIELD_WIDTH:", this.conf.FIELD_WIDTH);
+		console.log("FIELD_HEIGHT:", this.conf.FIELD_HEIGHT);
+		console.log("PADDLE_RATIO:", this.conf.PADDLE_RATIO);
+		console.log("PADDLE_ACC:", this.conf.PADDLE_ACC);
 		this.scene = this.sceneBuilder.rebuild(this.conf);
 		this.gameLogic.setScene(this.scene);
 		this.paddleLogic.setScene(this.scene);
 	}
 
-	public setTimestamp(timestamp: Date) {
+	public setTimestamp(timestamp: Number) {
 		// The timestamp can be used for synchronizing the game start between multiple clients
 		console.log("Game started at:", timestamp);
 		this.gameStatus.timestamp = timestamp;

@@ -20,7 +20,7 @@ export interface ServerState {
 	scoreL: number;
 	scoreR: number;
 	started: boolean;
-	timestamp: Date | null;
+	timestamp: Number | null;
 }
 
 export interface GameStatus {
@@ -28,7 +28,7 @@ export interface GameStatus {
 	p2Score:	number,
 	running:	boolean,
 	playing:	boolean,
-	timestamp: Date | null;
+	timestamp: Number | null;
 }
 
 //	Speed values
