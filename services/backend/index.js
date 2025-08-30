@@ -98,11 +98,12 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
         ws.send(JSON.stringify({ type: "join", side: ws._side, gameConfig: room.config, state: room.state }));
 
       } else if (type === "ready") {
-        const { userId } = parsed;
-        // Set the player as ready
         const room = rooms.get(ws._roomId);
+        // If the player is already ready
+        if (room.getPlayer(ws).ready) return;
         room.getPlayer(ws).ready = true;
         startLoop(room);
+        const { userId } = parsed;
         console.log(`User ${userId} is ready`);
 
       } else if (type === "input") {

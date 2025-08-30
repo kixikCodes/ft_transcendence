@@ -11,7 +11,22 @@
 <body>
 	<h1>Transcendence Pong</h1>
 	<canvas id="gameCanvas"></canvas>
-	<button id="startButton">Start Game</button>
+	<!-- Game Control Buttons. StartBtn to start the chosen game mode, StopBtn to stop the game, and ResetBtn to reset the game -->
+	<div id="gameControls">
+		<button id="startBtn">Start Game</button>
+		<button id="stopBtn">Stop Game</button>
+		<button id="resetBtn">Reset Game</button>
+	</div>
+	<!-- Choose the Opponent by clicking on a button. Choose between AI and Local Player -->
+	<div id="opponentSelection">
+		<button id="aiOpponentButton">Play vs AI</button>
+		<button id="localOpponentButton">Play vs Local Player</button>
+	</div>
+	<!-- In case the user wants to play remotely, there is an input field for the room name he wants to join -->
+	<div id="roomSelection">
+		<input type="text" id="roomName" placeholder="Enter room name" />
+		<button id="joinRoomButton">Join Room</button>
+	</div>
 
 	<h2>User Management</h2>
 	<form id="addUserForm">
@@ -22,7 +37,7 @@
 	<div id="chat">
 		<textarea id="log" cols="50" rows="10" readonly></textarea><br />
 		<input id="msg" type="text" placeholder="Type a message..." />
-		<button id="send">Sendfvdfvdfv</button>
+		<button id="send">Send</button>
 	</div>
 	<script src="https://cdn.babylonjs.com/babylon.js"></script>
 	<script type="module" src="/db_web_api.js"></script>

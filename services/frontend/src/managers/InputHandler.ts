@@ -24,10 +24,10 @@ export class InputHandler {
 	}
 
 	private setUpEventListeners() : void {
-		const startButton = document.getElementById("startButton") as HTMLButtonElement;
+		const startBtn = document.getElementById("startBtn") as HTMLButtonElement;
 		
-		if (startButton) {
-			startButton.addEventListener("click", () => {
+		if (startBtn) {
+			startBtn.addEventListener("click", () => {
 				if (this.isRemote && this.remote) {
 					// Send via the remote player manager to the server, that the player is ready. It sets the ready state for this player in a room to true
 					this.remote.ready();
