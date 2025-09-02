@@ -116,6 +116,7 @@ export class SceneBuilder {
 			scene);
 		scene.ball = Object.assign(ballMesh, {
 			speed: { hspd: 0, vspd: 0 },
+			spd_damp: 0,
 		}) as BallMesh;
 
 		const mkPaddle = (name: string) =>

@@ -21,7 +21,7 @@ export class PaddleLogic {
 	private gameStatus: GameStatus;
 	private gameLogic !: GameLogic;
 	private keys: { [key: string]: boolean };
-	private lastPredictionTime: number[] = [0, 0];
+	public lastPredictionTime: number[] = [0, 0];
 	private paddle_goal_pos: number[] = [0, 0];
 	private conf!: Readonly<Derived>;
 	private settings: Settings;
@@ -89,38 +89,76 @@ export class PaddleLogic {
 	}
 
 	//	AI paddle Control
-		public aiPaddleControl(tempState: TmpState, ballV: { hspd: number; vspd: number },
-						conf: Readonly<Derived>, paddle: PaddleMesh): number {
-		const side = (paddle.position.x < 0) ? 0 : 1;
-
-		if (performance.now() - this.lastPredictionTime[side] > 1000)
-		{
-			let sim: TmpState = { ...tempState };
-			let vh = ballV.hspd;
-			let vv = ballV.vspd;
-
-			if (this.settings.getAiDifficulty() === 'MEDIUM') {
-				vh += 0.15 - (Math.random() * 0.3);
-				vv += 0.15 - (Math.random() * 0.3);
-			}
-
-			let failsafe = conf.FIELD_WIDTH * (this.settings.getAiDifficulty()==='EASY' ? 1/4.5 : 1.5);
-
-			const targetX = paddle.position.x + (side === 0 ? 5 : -5);
-			while (((side === 0 && sim.ballX > targetX) || (side === 1 && sim.ballX < targetX))
-				&& failsafe-- > 0) {
-			moveBall(sim, { hspd: vh, vspd: vv }, conf, false);
-			}
-
-			this.paddle_goal_pos[side] = sim.ballY;
-			this.lastPredictionTime[side] = performance.now();
-		}
-
-		if (Math.abs(this.paddle_goal_pos[side] - paddle.position.z) > this.conf.paddleSpeed / 2) {
-			return Math.sign(this.paddle_goal_pos[side] - paddle.position.z);
-		}
-		return 0;
-	}
-
+	public aiPaddleControl(paddle: PaddleMesh, ai_level: string) : number {
+		const	ball = this.scene.ball;
+		const	paddleSpeed = this.conf.paddleSpeed;
+		const	paddle_side = (paddle.position.x < 0) ? 0 : 1;
 	
+		//	Update AI's view of the field once per second
+		if (performance.now() - this.lastPredictionTime[paddle_side] > 1000)
+		{
+			//	Update the to new prediction time
+			this.lastPredictionTime[paddle_side] = performance.now();
+
+			//	Move to middle
+			if ((paddle_side == 0 && ball.speed.hspd > 0)
+			|| (paddle_side == 1 && ball.speed.hspd < 0))
+			{
+				this.paddle_goal_pos[paddle_side] = 0;
+				return (Math.sign(0 - paddle.position.z) * paddleSpeed);
+			}
+
+			//	Prediction variables
+			let	failsafe = this.conf.FIELD_WIDTH * 1.5;
+			let	ball_xx = ball.position.x;
+			let	ball_zz = ball.position.z;
+			let	ball_hh = ball.speed.hspd;
+			let	ball_vv = ball.speed.vspd;
+			let	ball_damp = ball.spd_damp;
+	
+			//	Cut prediction path short
+			if (ai_level == 'EASY')
+				failsafe /= 4.5;
+	
+			//	Offset ball direciton a bit to make it less accurate on MEDIUM difficulty
+			if (ai_level == 'MEDIUM')
+			{
+				ball.speed.hspd += 0.15 - (Math.random() * 0.3);
+				ball.speed.vspd += 0.15 - (Math.random() * 0.3);
+			}
+	
+			//	Simulate ball movement
+			if (paddle.position.x < 0)
+			{
+				while (ball.position.x > paddle.position.x + 5 && failsafe > 0)
+				{
+					this.gameLogic.updateBall(false);
+					failsafe --;
+				}
+			}
+			else if (paddle.position.x > 0)
+			{
+				while (ball.position.x < paddle.position.x - 5 && failsafe > 0)
+				{
+					this.gameLogic.updateBall(false);
+					failsafe --;
+				}
+			}
+	
+			//	Reset ball to original conditions
+			this.paddle_goal_pos[paddle_side] = this.scene.ball.position.z;
+			this.scene.ball.position.x = ball_xx;
+			this.scene.ball.position.z = ball_zz;
+			this.scene.ball.speed.hspd = ball_hh;
+			this.scene.ball.speed.vspd = ball_vv;
+			this.scene.ball.spd_damp = ball_damp;
+		}
+	
+		//	Return direction for paddle to move
+		if (Math.abs(this.paddle_goal_pos[paddle_side] - paddle.position.z) > this.conf.paddleSpeed / 2)
+			return (Math.sign(this.paddle_goal_pos[paddle_side] - paddle.position.z) * paddleSpeed);
+	
+		//	Paddle is close to goal, don't move
+		return (0);
+	}
 }

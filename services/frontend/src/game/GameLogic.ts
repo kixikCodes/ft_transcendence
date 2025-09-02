@@ -19,7 +19,7 @@ export class GameLogic {
 		this.gameStatus = gameStatus;
 		this.keys = keys;
 		this.settings = settings;
-		this.tempState = { p1X: scene.paddle1.position.x, p1Y: scene.paddle1.position.y, p2X: scene.paddle2.position.x, p2Y: scene.paddle2.position.y, ballX: 0, ballY: 0, scoreL: 0, scoreR: 0, p1_spd: 0, p2_spd: 0 };
+		this.tempState = { p1X: scene.paddle1.position.x, p1Y: scene.paddle1.position.y, p2X: scene.paddle2.position.x, p2Y: scene.paddle2.position.y, ballX: 0, ballY: 0, scoreL: 0, scoreR: 0, p1_spd: 0, p2_spd: 0 };	
 	}
 
 	public setScene(scene: GameScene): void {
@@ -34,48 +34,151 @@ export class GameLogic {
 		this.paddleLogic = paddleLogic;
 	}
 
-	public update(): void {
-		// If the opponent is remote, the paddles/ball are getting updated via applyServerState()
-		// console.log("Opponent is", this.settings.getOpponent());
+	public update(): void
+	{
 		if (this.settings.getOpponent() === 'REMOTE')
 		{
+			// REMOTE: Use shared logic.ts for all state updates
+			movePaddles(this.tempState, {
+				left: this.paddleLogic.playerPaddleControl(this.scene.paddle1),
+				right: this.paddleLogic.playerPaddleControl(this.scene.paddle2)
+			}, this.conf);
+
+			moveBall(this.tempState, this.ballV, this.conf, true);
+
+			// Sync tempState to scene
+			this.scene.paddle1.position.z = this.tempState.p1Y;
+			this.scene.paddle2.position.z = this.tempState.p2Y;
+			this.scene.ball.position.x = this.tempState.ballX;
+			this.scene.ball.position.z = this.tempState.ballY;
+
+			this.gameStatus.scoreL = this.tempState.scoreL;
+			this.gameStatus.scoreR = this.tempState.scoreR;
+
 			this.updateScores();
 			return;
 		}
 
-		// console.log("test");
-		// console.log(this.conf);
-		// If the game is played locally and the Opponent is an AI => control p1 by dualPaddleControl
-		// If the game is played locally and the Opponent is a Person => control p1 by playerPaddleControl
-		const p1 = this.settings.getOpponent() === 'AI' ?
-			this.paddleLogic.dualPaddleControl(this.scene.paddle1) :
-			this.paddleLogic.playerPaddleControl(this.scene.paddle1);
+		// LOCAL/AI: Use direct Babylon.js object manipulation
+		console.log(this.scene.ball.speed);
+		const p1 = this.settings.getOpponent() === 'AI'
+			? this.paddleLogic.dualPaddleControl(this.scene.paddle1)
+			: this.paddleLogic.playerPaddleControl(this.scene.paddle1);
 
-		// If the game is played locally and the Opponent is an AI => control p2 by aiPaddleControl
-		// If the game is played locally and the Opponent is a Person => control p2 by playerPaddleControl
-		// 
-		const p2 = this.settings.getOpponent() === 'AI' ?
-			this.paddleLogic.aiPaddleControl(this.tempState, this.ballV, this.conf, this.scene.paddle2) :
-			this.paddleLogic.playerPaddleControl(this.scene.paddle2);
-		const inputs = {
-			left: p1,
-			right: p2
-		};
+		const p2 = this.settings.getOpponent() === 'AI'
+			? this.paddleLogic.aiPaddleControl(this.scene.paddle2, this.settings.getOpponent())
+			: this.paddleLogic.playerPaddleControl(this.scene.paddle2);
 
-		movePaddles(this.tempState, inputs, this.conf);
-		// console.log("Ball before move:", this.tempState.ballX, this.tempState.ballY);
-		moveBall(this.tempState, this.ballV, this.conf, true);
+		// Move paddles directly
+		const paddleSpeed = this.conf.paddleSpeed;
+		const paddleAcc = this.conf.PADDLE_ACC;
+		this.scene.paddle1.speed.vspd += ((p1*paddleSpeed) - this.scene.paddle1.speed.vspd) * paddleAcc;
+		this.scene.paddle2.speed.vspd += ((p2*paddleSpeed) - this.scene.paddle2.speed.vspd) * paddleAcc;
+		this.scene.paddle1.position.z += this.scene.paddle1.speed.vspd;
+		this.scene.paddle2.position.z += this.scene.paddle2.speed.vspd;
 
-		this.scene.paddle1.position.z = this.tempState.p1Y;
-		this.scene.paddle2.position.z = this.tempState.p2Y;
-		this.scene.ball.position.x = this.tempState.ballX;
-		this.scene.ball.position.z = this.tempState.ballY;
+		// Clamp paddles within field
+		const halfField = this.conf.FIELD_HEIGHT / 2;
+		const halfPaddle = this.conf.paddleSize / 2;
+		this.scene.paddle1.position.z = Math.max(-halfField + halfPaddle, Math.min(halfField - halfPaddle, this.scene.paddle1.position.z));
+		this.scene.paddle2.position.z = Math.max(-halfField + halfPaddle, Math.min(halfField - halfPaddle, this.scene.paddle2.position.z));
 
-		this.gameStatus.scoreL = this.tempState.scoreL;
-		this.gameStatus.scoreR = this.tempState.scoreR;
-
+		this.updateBall(true);
 		this.updateScores();
+    }
+
+
+	public updateBall(real_mode: boolean) : void {
+		const	ball = this.scene.ball;
+		const	paddle1 = this.scene.paddle1;
+		const	paddle2 = this.scene.paddle2;
+		
+		const	paddleSize = this.conf.paddleSize;
+
+		//	Update ball position based on speed attribute
+		ball.position.x = Math.max(-this.conf.FIELD_WIDTH, Math.min(this.conf.FIELD_WIDTH, ball.position.x));
+		ball.position.z = Math.max(-this.conf.FIELD_HEIGHT, Math.min(this.conf.FIELD_HEIGHT, ball.position.z));
+		ball.speed.hspd = Math.max(-1.25, Math.min(1.25, ball.speed.hspd));
+		ball.speed.vspd = Math.max(-1.25, Math.min(1.25, ball.speed.vspd));
+		ball.position.x += ball.speed.hspd * ball.spd_damp;
+		ball.position.z += ball.speed.vspd * ball.spd_damp;
+		if (ball.spd_damp < 1)
+			ball.spd_damp += 0.01;
+
+		//	Collision with left paddle
+		if (ball.position.x <= (paddle1.position.x - ball.speed.hspd))
+		{
+			if (!real_mode)
+				return;
+			
+			//	Goal
+			if (ball.position.z - 1 > (paddle1.position.z + paddleSize / 2)
+			|| ball.position.z + 1 < (paddle1.position.z - paddleSize / 2))
+			{
+				this.resetBall();
+				this.gameStatus.scoreR ++;
+			}
+			else	//	Block
+			{
+				ball.speed.hspd *= -1.01;
+				this.screenshake(ball.speed.hspd);
+			}
+		}
+
+		//	Collision with right paddle
+		if (ball.position.x >= (paddle2.position.x - ball.speed.hspd))
+		{
+			if (!real_mode)
+				return;
+			
+			//	Goal
+			if (ball.position.z - 1 > (paddle2.position.z + paddleSize / 2)
+			|| ball.position.z + 1 < (paddle2.position.z - paddleSize / 2))
+			{
+				if (!real_mode)
+					return;
+				this.resetBall();
+				this.gameStatus.scoreL ++;
+			}
+			else	//	Block
+			{
+				ball.speed.hspd *= -1.01;
+				this.screenshake(ball.speed.hspd);
+			}
+		}
+
+		//	Bounce off upper and bottom wall (reverse vertical speed)
+		if ((ball.position.z > (this.scene.upperWall.position.z - ball.speed.vspd - 1) && ball.speed.vspd > 0)
+			|| (ball.position.z < (this.scene.bottomWall.position.z - ball.speed.vspd + 1) && ball.speed.vspd < 0))
+		{
+			if (real_mode)
+				this.screenshake(ball.speed.vspd);
+			ball.speed.vspd *= -1;
+			//	Additional offset to avoid wall-clipping
+			ball.position.z += ball.speed.vspd;
+		}
 	}
+
+	private resetBall() : void {
+		const	ball = this.scene.ball;
+	
+		//	Reset Ball position to origin
+		ball.position.x = 0;
+		ball.position.z = 0;
+		ball.spd_damp = 0;
+
+		//	Randomize direction for next serve
+		ball.speed.hspd = Math.random() < 0.5 ? -0.75 : 0.75;
+		ball.speed.vspd = Math.random() < 0.5 ? -0.75 : 0.75;
+
+		//	Reset paddle AI cooldowns
+		this.paddleLogic.lastPredictionTime[0] = 0;
+		this.paddleLogic.lastPredictionTime[1] = 0;
+
+		//	Pause game after score
+		// this.gameStatus.playing = false;
+	}
+
 
 	private updateScores(): void {
 		this.scene.scores.clear();
