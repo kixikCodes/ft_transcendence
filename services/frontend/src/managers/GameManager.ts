@@ -157,6 +157,23 @@ export class GameManager {
 		this.gameStatus.p2Y = s.p2Y;
 	}
 
+	public resetServerState(): void {
+		this.scene.paddle1.position.z = 0;
+		this.scene.paddle2.position.z = 0;
+		this.scene.ball.position.x = 0;
+		this.scene.ball.position.z = 0
+
+		// Update the game status scores and playing state
+		this.gameStatus.scoreL = 0;
+		this.gameStatus.scoreR = 0;
+		this.gameStatus.playing = false;
+		this.gameStatus.timestamp = null;
+		this.gameStatus.ballX = 0;
+		this.gameStatus.ballY = 0;
+		this.gameStatus.p1Y = 0;
+		this.gameStatus.p2Y = 0;
+	}
+
 	public getInputHandler(): InputHandler {
 		return this.inputHandler;
 	}
@@ -188,5 +205,13 @@ export class GameManager {
 
 	public getGameStatus(): GameStatus {
 		return this.gameStatus;
+	}
+
+	public stopGame(): void {
+		this.resetServerState();
+		this.gameLogic.resetTempStates();
+
+		this.gameLogic.updateScores();
+		this.scene.render();
 	}
 }

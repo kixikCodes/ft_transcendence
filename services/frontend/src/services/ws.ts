@@ -9,6 +9,10 @@ type Msg =
   | { type: 'state'; state: ServerState; }
   | { type: 'join'; side: string; gameConfig: Derived; state: ServerState; }
   | { type: 'start'; timestamp: Number; }
+  | { type: 'leave'; roomId: string }
+  | { type: 'reset' }
+
+  // ws.on("reset", (m: { type: "reset" }) => {
 
 class WSClient {
   // WebSocket connection

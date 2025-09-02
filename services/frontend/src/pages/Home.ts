@@ -12,10 +12,11 @@ export const HomeController = (root: HTMLElement) => {
   const msgInput = root.querySelector<HTMLInputElement>("#msg")!;
   const sendBtn = root.querySelector<HTMLButtonElement>("#send")!;
   const joinBtn = root.querySelector<HTMLButtonElement>("#joinRoomButton")!;
+  const leaveBtn = root.querySelector<HTMLButtonElement>("#leaveRoomButton")!;
   const roomInput = root.querySelector<HTMLInputElement>("#roomName")!;
+  const roomInputLeave = root.querySelector<HTMLInputElement>("#roomNametoLeave")!;
   const startBtn = root.querySelector<HTMLButtonElement>("#startBtn")!;
   const stopBtn = root.querySelector<HTMLButtonElement>("#stopBtn")!;
-  const resetBtn = root.querySelector<HTMLButtonElement>("#resetBtn")!;
   const aiBtn = root.querySelector<HTMLButtonElement>("#aiOpponentButton")!;
   const localBtn = root.querySelector<HTMLButtonElement>("#localOpponentButton")!;
   const remoteBtn = root.querySelector<HTMLButtonElement>("#remoteOpponentButton")!;
@@ -42,7 +43,9 @@ export const HomeController = (root: HTMLElement) => {
   // When the ws receives the message type chat from the server, subscribe these callback/lambda functions to the message type via ws.ts
   ws.on("chat", (m: { type: "chat"; userId: number; content: string }) => {
     console.log("Server message: chat", m);
-    appendLog(`P${m.userId}: ${m.content}`);
+    m.userId != -1 ? 
+    appendLog(`P${m.userId}: ${m.content}`) :
+    appendLog(`${m.content}`);
   });
 
   // When the ws receives the message type state from the server, subscribe these callback/lambda functions to the message type via ws.ts
@@ -56,6 +59,10 @@ export const HomeController = (root: HTMLElement) => {
     game.setConfig(m.gameConfig);
     game.applyServerState(m.state);
     appendLog(`Joined as ${m.side === "left" ? "P1 (left)" : "P2 (right)"}!`);
+  });
+
+  ws.on("reset", (m: { type: "reset" }) => {
+    game.stopGame();
   });
 
   // When the ws receives the message type start from the server, subscribe these callback/lambda functions to the message type via ws.ts
@@ -83,8 +90,16 @@ export const HomeController = (root: HTMLElement) => {
       return;
     const room = roomInput.value.trim() || "room1";
     console.log("Joining room and sending to server:", room);
-    ws.send({ type: "join", room });
-    appendLog(`Joining room "${room}" ...`);
+    ws.send({ type: "join", roomId: room, userId: userId });
+  };
+
+  // Leave a game room and send it to the server
+  const onLeave = () => {
+    if (!ws)
+      return;
+    const room = roomInputLeave.value.trim() || "room1";
+    console.log("Leaving room and sending to server:", room);
+    ws.send({ type: "leave", roomId: room, userId: userId });
   };
 
   // Ready up and send it to the server
@@ -97,9 +112,8 @@ export const HomeController = (root: HTMLElement) => {
   };
 
   const onStop = () => {
-
-  };
-  const onReset = () => {
+    console.log("Stop button clicked");
+    game.stopGame();
 
   };
 
@@ -127,9 +141,9 @@ export const HomeController = (root: HTMLElement) => {
   // Add event listeners to the buttons
   sendBtn.addEventListener("click", onSend);
   joinBtn.addEventListener("click", onJoin);
+  leaveBtn.addEventListener("click", onLeave);
   startBtn.addEventListener("click", onStart);
   stopBtn.addEventListener("click", onStop);
-  resetBtn.addEventListener("click", onReset);
   aiBtn.addEventListener("click", onAI);
   localBtn.addEventListener("click", onLocal);
   remoteBtn.addEventListener("click", onRemote);
@@ -138,9 +152,9 @@ export const HomeController = (root: HTMLElement) => {
   return () => {
     sendBtn.removeEventListener("click", onSend);
     joinBtn.removeEventListener("click", onJoin);
+    leaveBtn.removeEventListener("click", onLeave);
     startBtn.removeEventListener("click", onStart);
     stopBtn.removeEventListener("click", onStop);
-    resetBtn.removeEventListener("click", onReset);
     aiBtn.removeEventListener("click", onAI);
     localBtn.removeEventListener("click", onLocal);
     // remote?.disconnect();

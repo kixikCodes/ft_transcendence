@@ -76,11 +76,10 @@ export class GameLogic {
 		this.updateScores();
 	}
 
-	private updateScores(): void {
+	public updateScores(): void {
 		this.scene.scores.clear();
 		this.scene.scores.drawText(this.gameStatus.scoreL + "    " + this.gameStatus.scoreR, null, 120, "bold 100px Segoe UI, monospace", "white", "#002D2D", true, true);
 	}
-
 
 	private screenshake(force: number): void {
 		const camera = this.scene.camera;
@@ -110,5 +109,10 @@ export class GameLogic {
 			}
 		};
 		animateShake(startTime);
+	}
+
+	public resetTempStates(): void {
+		this.ballV = resetBall();
+		this.tempState = { p1Y: 0, p2Y: 0, ballX: 0, ballY: 0, scoreL: 0, scoreR: 0, p1_spd: 0, p2_spd: 0 };
 	}
 }
