@@ -27,15 +27,6 @@ export const HomeController = (root: HTMLElement) => {
   // Remote
   const userId = Number(localStorage.getItem("userId"));
   ws.connect(userId);
-      //   } else if (type === "input") {
-      //   console.log("Backend: Received input from client:", parsed);
-      //   const { direction } = parsed;
-      //   const room = rooms.get(ws._roomId);
-      //   if (!room || !room.state.started) return;
-
-      //   if (ws._side === "left")  room.inputs.left  = direction;
-      //   else if (ws._side === "right") room.inputs.right = direction;
-      // }
   game.getInputHandler().bindRemoteSender((dir) => {
     if (game.getInputHandler().isInputRemote() && ws)
       ws.send({ type: "input", direction: dir, userId: userId });
@@ -74,43 +65,6 @@ export const HomeController = (root: HTMLElement) => {
     appendLog('Game started!');
   });
 
-
-      // if (type === "chat") {
-      //   const { userId, content } = parsed;
-      //   db.run("INSERT INTO messages (userId, content) VALUES (?, ?)", [
-      //     userId,
-      //     content,
-      //   ]);
-      //   // Send the message, which the client sent to all connected clients
-      //   broadcaster(clients, ws, JSON.stringify({ type: 'chat', userId: userId, content: content }));
-
-      // } else if (type === "join") {
-      //   // Join a game room
-      //   const { roomId, userId } = parsed;
-      //   const room = getOrCreateRoom(roomId);
-      //   room.addPlayer(userId, ws);
-      //   // Response to the client, which side the player is on and the current state to render the initial game state
-      //   ws.send(JSON.stringify({ type: "join", side: ws._side, gameConfig: room.config, state: room.state }));
-
-      // } else if (type === "ready") {
-      //   const room = rooms.get(ws._roomId);
-      //   // If the player is already ready
-      //   if (room.getPlayer(ws).ready) return;
-      //   room.getPlayer(ws).ready = true;
-      //   startLoop(room);
-      //   const { userId } = parsed;
-      //   console.log(`User ${userId} is ready`);
-      //   // broadcaster(room.players.keys(), null, JSON.stringify({ type: "ready", userId: userId }));
-
-      // } else if (type === "input") {
-      //   console.log("Backend: Received input from client:", parsed);
-      //   const { direction } = parsed;
-      //   const room = rooms.get(ws._roomId);
-      //   if (!room || !room.state.started) return;
-
-      //   if (ws._side === "left")  room.inputs.left  = direction;
-      //   else if (ws._side === "right") room.inputs.right = direction;
-      // }
   // Actions from this user like sending chat messages, joining a room, readying up
   // Send chat message to server
   const onSend = () => {

@@ -24,7 +24,7 @@ await fastify.register(cors, {
 });
 await fastify.register(websocket);
 // Call the initDb function to create the tables by the time the server starts
-initDb();
+initDb(db);
 
 fastify.get("/users", (request, reply) => {
   db.all("SELECT * FROM users", [], (err, rows) => {
