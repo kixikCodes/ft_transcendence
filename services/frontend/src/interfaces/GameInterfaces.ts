@@ -2,23 +2,37 @@
 
 //	Game Status
 
+// room.state:
+// p1Y: 0,
+// p2Y: 0,
+// ballX: 0,
+// ballY: 0,
+// scoreL: 0,
+// scoreR: 0,
+// started: false,
+// timestamp: null
+
 export interface ServerState {
-	started: boolean;
 	p1Y: number;
 	p2Y: number;
 	ballX: number;
 	ballY: number;
 	scoreL: number;
 	scoreR: number;
-	vx: number;
-	vy: number;
+	started: boolean;
+	timestamp: Number | null;
 }
 
-export interface GameStatus {
-	p1Score:	number,
-	p2Score:	number,
+export interface GameStatus extends BABYLON.Scene {
+	p1Y:	number,
+	p2Y:	number,
+	ballX:	number,
+	ballY:	number,
+	scoreL:	number,
+	scoreR:	number,
 	running:	boolean,
 	playing:	boolean,
+	timestamp: Number | null;
 }
 
 //	Speed values
