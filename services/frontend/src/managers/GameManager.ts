@@ -75,6 +75,8 @@ export class GameManager {
 		this.gameLogic.setPaddleLogic(this.paddleLogic);
 		this.setUpEventListeners();
 		// Start the game loop which updates the game state and renders the scene
+		this.gameLogic.setConfig(this.conf);
+		this.paddleLogic.setConfig(this.conf);
 		this.startGameLoop();
 	}
 
