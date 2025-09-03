@@ -63,6 +63,7 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
 
 	// When a client disconnects, remove it from the clients set
 	ws.on("close", () => {
+    console.log("Client disconnected in backend");
 		clients.delete(ws);
 	});
 
@@ -72,7 +73,6 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
       const parsed = JSON.parse(message);
       const { type } = parsed;
       console.log("parsed message:", parsed);
-      console.log("Backend: Received message type:", type);
 
       if (type === "chat") {
         const { userId, content } = parsed;
@@ -85,11 +85,31 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
 
       } else if (type === "join") {
         // Join a game room
-        const { roomId, userId } = parsed;
-        const room = getOrCreateRoom(roomId);
+        const { userId } = parsed;
+        const room = getOrCreateRoom();
+        if (room.players.has(ws)) return;
         room.addPlayer(userId, ws);
         // Response to the client, which side the player is on and the current state to render the initial game state
-        ws.send(JSON.stringify({ type: "join", side: ws._side, gameConfig: room.config, state: room.state }));
+        ws.send(JSON.stringify({ type: "join", roomId: room.id, side: ws._side, gameConfig: room.config, state: room.state }));
+
+      } else if (type === "leave") {
+        const { userId } = parsed;
+        // console.log(`player id: ${userId} wants to leave the channel: ${roomId}`);
+        const room = rooms[ws._roomId];
+        if (!room || !room.players.has(ws)) return;
+        if (room.loopInterval) {
+          clearInterval(room.loopInterval);
+          room.loopInterval = null;
+        }
+        room.state.started = false;
+        ws.send(JSON.stringify({ type: "chat", userId: -1, content: `Left room ${ws._roomId}.` }));
+        broadcaster(room.players.keys(), ws, JSON.stringify({ type: "chat", userId: userId, content: `User ${userId} left room ${ws._roomId}` }));
+        broadcaster(room.players.keys(), null, JSON.stringify({ type: "reset" }));
+        room.removePlayer(ws);
+        if (room.players.size === 0) rooms.delete(ws._roomId);
+        try {
+          ws.close();
+        } catch {}
 
       } else if (type === "ready") {
         const room = rooms.get(ws._roomId);
@@ -97,9 +117,7 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
         if (room.getPlayer(ws).ready) return;
         room.getPlayer(ws).ready = true;
         startLoop(room);
-        const { userId } = parsed;
-        console.log(`User ${userId} is ready`);
-        // broadcaster(room.players.keys(), null, JSON.stringify({ type: "ready", userId: userId }));
+        broadcaster(room.players.keys(), null, JSON.stringify({ type: "ready", userId: userId }));
 
       } else if (type === "input") {
         console.log("Backend: Received input from client:", parsed);
@@ -109,6 +127,9 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
 
         if (ws._side === "left")  room.inputs.left  = direction;
         else if (ws._side === "right") room.inputs.right = direction;
+
+      } else if (type === "teardown") {
+        // console.log("Teardown message from client:", parsed);
       }
     } catch (e) {
       console.error("Invalid JSON received:", message);

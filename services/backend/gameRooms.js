@@ -1,10 +1,11 @@
 import { buildWorld, resetBall } from "@app/shared";
 
-export const rooms = new Map();
+export const rooms = [];
+// export const rooms = new Map();
 
 export class Room {
-  constructor(id) {
-    this.id = id;
+  constructor() {
+    this.id = rooms.length;
     this.players = new Map();
     this.state = this.initState();
     this.tempState = { p1Y: 0, p2Y: 0, ballX: 0, ballY: 0, scoreL: 0, scoreR: 0, p1_spd: 0, p2_spd: 0 };
@@ -30,14 +31,13 @@ export class Room {
 
   addPlayer(userId, ws) {
     // If this player is already in the room, do nothing
-    if (this.players.has(ws)) return;
     const side = this.players.size % 2 === 0 ? "left" : "right";
     this.players.set(ws, { id: userId, side: side, ready: false });
     console.log(`User ${userId} added to room ${this.id}`);
     ws._roomId = this.id;
     ws._side = side;
   }
-  
+
   removePlayer(ws) {
     this.players.delete(ws);
     console.log(`Player removed from room ${this.id}`);
@@ -48,11 +48,11 @@ export class Room {
   }
 }
 
-export function getOrCreateRoom(roomId) {
-  let room = rooms.get(roomId);
+export function getOrCreateRoom() {
+  let room = rooms.length > 0 ? rooms[rooms.length - 1] : null;
   if (!room) {
-    room = new Room(roomId);
-    rooms.set(roomId, room);
+    room = new Room();
+    rooms.push(room);
   }
   return room;
 }
