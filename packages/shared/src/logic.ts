@@ -15,7 +15,7 @@ type TmpState = {
 
 export function movePaddles(tempState: TmpState, inputs: { left: number; right: number }, conf: Readonly<Derived>): void {
 	// console.log("Moving paddles with inputs:", inputs);
-    const paddleSize = conf.paddleSize;
+	const paddleSize = conf.paddleSize;
 	const paddleSpeed = conf.paddleSpeed;
 	const paddle_acc = conf.PADDLE_ACC;
 	const FIELD_HEIGHT = conf.FIELD_HEIGHT;
