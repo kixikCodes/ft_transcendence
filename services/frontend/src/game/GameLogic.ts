@@ -92,8 +92,13 @@ export class GameLogic {
 		const	ball = this.scene.ball;
 		const	paddle1 = this.scene.paddle1;
 		const	paddle2 = this.scene.paddle2;
-		
 		const	paddleSize = this.conf.paddleSize;
+
+		if (ball.speed.hspd == 0)
+			ball.speed.hspd = (Math.random() < 0.5 ? -this.conf.FIELD_WIDTH : this.conf.FIELD_WIDTH) / 250;
+		if (ball.speed.vspd == 0)
+			ball.speed.vspd = (Math.random() < 0.5 ? -this.conf.FIELD_HEIGHT : this.conf.FIELD_HEIGHT) / 250;
+
 
 		//	Update ball position based on speed attribute
 		ball.position.x = Math.max(-this.conf.FIELD_WIDTH, Math.min(this.conf.FIELD_WIDTH, ball.position.x));

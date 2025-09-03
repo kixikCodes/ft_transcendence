@@ -155,8 +155,8 @@ export class PaddleLogic {
 		}
 	
 		//	Return direction for paddle to move
-		if (Math.abs(this.paddle_goal_pos[paddle_side] - paddle.position.z) > this.conf.paddleSpeed / 2)
-			return (Math.sign(this.paddle_goal_pos[paddle_side] - paddle.position.z) * paddleSpeed);
+		if (Math.abs(this.paddle_goal_pos[paddle_side] - paddle.position.z) > this.conf.paddleSpeed * 0.25)
+			return (Math.sign(this.paddle_goal_pos[paddle_side] - paddle.position.z));
 	
 		//	Paddle is close to goal, don't move
 		return (0);

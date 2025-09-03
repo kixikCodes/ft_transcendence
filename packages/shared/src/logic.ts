@@ -98,8 +98,8 @@ export function moveBall(tempState: TmpState, ballV: { hspd: number; vspd: numbe
   // Reset the ball velocity to a random horizontal direction and a randomized angle between +45 and -45 on the x-axis
   // The total speed is constant ~0.3
   export function resetBall() {
-    const hspd = Math.random() < 0.5 ? -0.75 : 0.75;
-    const vspd = Math.random() < 0.5 ? -0.75 : 0.75;
+    const hspd = Math.random() < 0.5 ? -0.4 : 0.4;
+    const vspd = Math.random() < 0.5 ? -0.4 : 0.4;
 
     return { hspd, vspd };
   }
