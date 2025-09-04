@@ -222,6 +222,7 @@ export const mountDashboard = async (root: HTMLElement) => {
   const searchInput = root.querySelector("#user-search") as HTMLInputElement;
 
   return () => {
+    console.log("Unmounting Dashboard");
   };
 }
 

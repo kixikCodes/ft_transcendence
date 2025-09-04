@@ -72,7 +72,7 @@ async function handleLocation(): Promise<void> {
             teardown = () => {};
         } else if (path === "/dashboard") {
             const { mountDashboard } = await import("/src/pages/Dashboard.js");
-            teardown = mountDashboard(root);
+            teardown = await mountDashboard(root);
         }
     } catch (e) {
         console.error(e);
