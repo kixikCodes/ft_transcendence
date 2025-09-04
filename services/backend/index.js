@@ -39,7 +39,7 @@ fastify.get("/api/users", async (request, reply) => {
   }
 });
 
-// Adding friend Ids to the user's friend list
+// This will send a friend request to another user
 fastify.post("/api/users/:id/sendFriendRequest", async (request, reply) => {
   // Extract userId from the URL parameters
   const userId = parseInt(request.params.id);
@@ -48,6 +48,7 @@ fastify.post("/api/users/:id/sendFriendRequest", async (request, reply) => {
   if (!friendId || !userId) {
     return reply.code(400).send({ error: "Invalid user ID or friend ID" });
   }
+  
 });
 
 fastify.post("/api/users/:id/unfriend", async (request, reply) => {
