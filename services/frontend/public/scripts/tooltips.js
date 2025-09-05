@@ -7,6 +7,6 @@ buttons.forEach(btn => {
       tooltip.textContent = btn.getAttribute('data-tooltip');
    });
    btn.addEventListener('mouseleave', () => {
-      tooltip.textContent = "Hover over a play option to see details here.";
+      tooltip.textContent = "";
    });
 });
