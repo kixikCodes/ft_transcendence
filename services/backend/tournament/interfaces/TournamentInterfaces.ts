@@ -1,3 +1,5 @@
+import { Room } from "../../gameRooms.js"
+
 export interface Player {
     id: number;
     name: string | null;
@@ -5,7 +7,9 @@ export interface Player {
 
 export interface Match {
     id: number;
+    room: Room;
     round: number;
+    time: number;
     p1: Player | null;
     p2: Player | null;
     winner: Player | null;
@@ -15,6 +19,7 @@ export interface Match {
 
 export interface Tournament {
     id: string;
+    rooms: Room[];
     size: 4 | 8 | 16;
     players: Player[];
     matches: Match[];

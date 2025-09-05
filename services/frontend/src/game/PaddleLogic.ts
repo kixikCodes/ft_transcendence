@@ -130,7 +130,7 @@ export class PaddleLogic {
 			//	Simulate ball movement
 			if (paddle.position.x < 0)
 			{
-				while (ball.position.x > paddle.position.x + 5 && failsafe > 0)
+				while (ball.position.x > paddle.position.x + 2 && failsafe > 0)
 				{
 					this.gameLogic.updateBall(false);
 					failsafe --;
@@ -138,7 +138,7 @@ export class PaddleLogic {
 			}
 			else if (paddle.position.x > 0)
 			{
-				while (ball.position.x < paddle.position.x - 5 && failsafe > 0)
+				while (ball.position.x < paddle.position.x - 2 && failsafe > 0)
 				{
 					this.gameLogic.updateBall(false);
 					failsafe --;
