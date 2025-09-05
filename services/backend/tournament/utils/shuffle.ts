@@ -1,100 +1,12 @@
-// filepath: /home/jgraf/Documents/42/transcendence/services/backend/tournament/TournamentManager.ts
-import { Tournament, Match, Player } from './interfaces/TournamentInterfaces.js';
-import { Room } from '../gameRooms.js';
+import { Player } from "../interfaces/TournamentInterfaces.ts";
 
-export class TournamentManager {
-    private tournament: Tournament;
-    private waitingPlayers: Player[] = [];
-    private currentMatch: Match | null = null;
+export function shufflePlayers(players: Player[]) {
+    let	result = players;
 
-    constructor(tournamentId: string, size: 4 | 8 | 16) {
-        this.tournament = {
-            id: tournamentId,
-            rooms: [],
-            size: size,
-            players: [],
-            matches: [],
-            round: 1,
-            status: "pending",
-        };
+    for (let i = result.length-1; i > 0; i--)
+    {
+        let	j = Math.floor(Math.random() * (i + 1));
+		[result[i], result[j]] = [result[j], result[i]];
     }
-
-    public registerPlayer(player: Player): void {
-        if (this.tournament.players.length < this.tournament.size) {
-            this.tournament.players.push(player);
-            this.waitingPlayers.push(player);
-            console.log(`Player ${player.name} registered for tournament ${this.tournament.id}.`);
-            if (this.waitingPlayers.length === this.tournament.size) {
-                this.startTournament();
-            }
-        } else {
-            console.log(`Tournament ${this.tournament.id} is full.`);
-        }
-    }
-
-    private startTournament(): void {
-        this.tournament.status = "active";
-        console.log(`Tournament ${this.tournament.id} has started with players:`, this.tournament.players);
-        this.scheduleMatches();
-    }
-
-    private scheduleMatches(): void {
-        const shuffledPlayers = this.shuffleArray(this.waitingPlayers);
-        for (let i = 0; i < shuffledPlayers.length; i += 2) {
-            const match: Match = {
-                id: this.tournament.matches.length + 1,
-                room: new Room(), // Create a new room for the match
-                round: this.tournament.round,
-                time: Date.now(),
-                p1: shuffledPlayers[i],
-                p2: shuffledPlayers[i + 1],
-                winner: null,
-                loser: null,
-                status: "pending",
-            };
-            this.tournament.matches.push(match);
-            this.tournament.rooms.push(match.room);
-            console.log(`Match scheduled: ${match.p1.name} vs ${match.p2.name}`);
-        }
-        this.startMatches();
-    }
-
-    private startMatches(): void {
-        this.tournament.matches.forEach(match => {
-            match.room.addPlayer(match.p1.id, match.p1); // Add players to the room
-            match.room.addPlayer(match.p2.id, match.p2);
-            match.status = "active";
-            console.log(`Match ${match.id} is now active.`);
-        });
-    }
-
-    public reportMatchOutcome(matchId: number, winnerId: number): void {
-        const match = this.tournament.matches.find(m => m.id === matchId);
-        if (match) {
-            match.winner = match.p1?.id === winnerId ? match.p1 : match.p2;
-            match.loser = match.p1?.id === winnerId ? match.p2 : match.p1;
-            match.status = "completed";
-            console.log(`Match ${matchId} completed. Winner: ${match.winner?.name}`);
-            this.checkTournamentOutcome();
-        }
-    }
-
-    private checkTournamentOutcome(): void {
-        const completedMatches = this.tournament.matches.filter(m => m.status === "completed");
-        if (completedMatches.length === this.tournament.matches.length) {
-            console.log(`Tournament ${this.tournament.id} completed.`);
-            this.tournament.status = "completed";
-        } else {
-            this.tournament.round++;
-            this.scheduleMatches(); // Schedule next round matches
-        }
-    }
-
-    private shuffleArray(array: Player[]): Player[] {
-        for (let i = array.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [array[i], array[j]] = [array[j], array[i]];
-        }
-        return array;
-    }
+	return (result);
 }
