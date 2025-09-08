@@ -7,11 +7,12 @@
     "start": "node index.js"
   },
   "dependencies": {
+    "@app/shared": "*",
     "@fastify/cors": "^8.0.0",
     "@fastify/websocket": "^8.0.0",
     "bcryptjs": "^3.0.2",
     "fastify": "^4.0.0",
-    "sqlite3": "^5.1.6",
-    "@app/shared": "*"
+    "nodemailer": "^7.0.6",
+    "sqlite3": "^5.1.6"
   }
 }
