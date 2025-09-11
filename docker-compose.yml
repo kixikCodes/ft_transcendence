@@ -50,7 +50,7 @@ services:
     build:
       context: .
       dockerfile: ./services/backend/Dockerfile
-    container_name: transcendence_backend
+    container_name: backend
     networks:
       - transcendence-net
     ports:
