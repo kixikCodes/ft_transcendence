@@ -32,6 +32,18 @@ services:
     networks:
       - transcendence-net
 
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:latest
+    container_name: nginx-exporter
+    command:
+      -nginx.scrape-uri=http://nginx:80/stub_status
+    ports:
+      - "9113:9113"
+    networks:
+      - transcendence-net
+    depends_on:
+      - nginx
+
   frontend:
     build:
       context: .

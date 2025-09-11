@@ -7,7 +7,7 @@ scrape_configs:
       - targets: ['localhost:9090']
   - job_name: 'nginx'
     static_configs:
-      - targets: ['nginx:80']
+      - targets: ['nginx-exporter:9113']
   - job_name: 'frontend'
     static_configs:
       - targets: ['frontend:5173']
