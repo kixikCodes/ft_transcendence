@@ -159,3 +159,92 @@ button {
   border-color: #3fbf7f;
   color: #fff;
 }
+
+/* Auth page specific styles — append to your main CSS */
+.auth-container {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr; /* stacked by default */
+  gap: 24px;
+  align-items: start;
+  box-sizing: border-box;
+  padding: 20px;
+}
+
+/* two-column on wide screens */
+@media (min-width: 900px) {
+  .auth-container {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.auth-card {
+  background-color: #2a2a2a;        /* matches .dashboard */
+  border: 2px solid #ccc;
+  padding: 28px;
+  border-radius: 8px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 280px;
+}
+
+/* Titles use the site accent */
+.auth-title {
+  font-size: 3rem;
+  margin: 0 0 6px 0;
+  color: #3fbf7f;
+  letter-spacing: 0.5px;
+}
+
+/* Inputs match site's dark style and font */
+.auth-form input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  margin: 8px 0;
+  font-family: "Quantico", sans-serif;
+  font-size: 2rem;
+  background: #333;
+  color: #eee;
+  border: 2px solid #ccc;
+  border-radius: 6px;
+  outline: none;
+  transition: 0.14s;
+}
+
+/* subtle focus ring */
+.auth-form input:focus {
+  box-shadow: 0 0 0 4px rgba(63,191,127,0.08);
+  border-color: #3fbf7f;
+}
+
+/* smaller submit buttons inside auth cards */
+.auth-submit {
+  font-size: 2rem;
+  padding: 8px 22px;
+  margin-top: 8px;
+}
+
+/* align submit to left or center */
+.form-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* error text */
+.auth-error {
+  color: #f66;
+  font-size: 1.6rem;
+  min-height: 2.2rem;
+  margin-top: 6px;
+}
+
+/* helper: keep placeholders slightly dim */
+.auth-form input::placeholder {
+  color: #aaa;
+}

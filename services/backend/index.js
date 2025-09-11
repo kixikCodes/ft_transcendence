@@ -1,5 +1,4 @@
 import Fastify from "fastify";
-import fastifyCookie from "@fastify/cookie";
 import sqlite3 from "sqlite3";
 import cors from "@fastify/cors";
 import websocket from "@fastify/websocket";
@@ -9,7 +8,7 @@ import { broadcaster } from "./utils.js";
 import { buildWorld, movePaddles, moveBall } from "@app/shared";
 import fastifyCookie from "@fastify/cookie";
 import bcrypt from "bcryptjs";			// Password encryption
-import jwt from "jsonwebtoken";			// JWT session tokens
+import * as jwt from "jsonwebtoken";	// JWT session tokens
 import qrcode from "qrcode";			// QR code gen for autheticator app
 import { authenticator } from "otplib";	// Authenticator App functionality
 // import * as Shared from "@app/shared";
@@ -122,8 +121,6 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
   });
 });
 
-
-// SECURITY SHIT
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecret"; // Temporary, use env vars
 const ACCESS_TOKEN_TTL = "15m";
@@ -270,20 +267,6 @@ fastify.post("/api/logout", (request, reply) => {
 	reply.send({ ok: true });
 });
 
-
-
-
-
-
-// Start the Fastify server on port 3000 hosting on all interfaces
-fastify.listen({ port: 3000, host: "0.0.0.0" }, (err) => {
-	if (err) {
-		fastify.log.error(err);
-		process.exit(1);
-	}
-	fastify.log.info("Backend running on port 3000");
-});
-
 export function startLoop(room) {
   // If the game is already started, do nothing
   if (room.state.started) return;
@@ -327,3 +310,12 @@ export function loop(room) {
   broadcaster(room.players.keys(), null, JSON.stringify({ type: "state", state: room.state }));
   // console.log("Broadcasted state:", room.state);
 }
+
+// Start the Fastify server on port 3000 hosting on all interfaces
+fastify.listen({ port: 3000, host: "0.0.0.0" }, (err) => {
+	if (err) {
+		fastify.log.error(err);
+		process.exit(1);
+	}
+	fastify.log.info("Backend running on port 3000");
+});
