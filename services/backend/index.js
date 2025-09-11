@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import sqlite3 from "sqlite3";
 import cors from "@fastify/cors";
 import websocket from "@fastify/websocket";
+import metricsPlugin from "fastify-metrics";
 import bcrypt from "bcryptjs";
 import { getOrCreateRoom, rooms } from "./gameRooms.js";
 import { initDb } from "./initDatabases.js";
@@ -12,6 +13,7 @@ import { buildWorld, movePaddles, moveBall } from "@app/shared";
 // import { Config } from "@app/shared";
 
 // import { startGameLoop } from "./game.js";
+import metricsPlugin from "fastify-metrics";
 
 const fastify = Fastify({ logger: true });
 // const db = new sqlite3.Database('./database.sqlite');
@@ -116,6 +118,30 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
     }
   });
 });
+
+async function start() {
+  try {
+  // Register CORS and WebSocket plugins
+  await fastify.register(cors, {
+    origin: true,
+  });
+  await fastify.register(websocket);
+  await fastify.register(metricsPlugin, { // Register the metrics plugin to expose Prometheus metrics at /metrics
+    endpoint: "/metrics",
+    enableDefaultMetrics: true,
+  });
+
+async function start() {
+  try {
+  // Register CORS and WebSocket plugins
+  await fastify.register(cors, {
+    origin: true,
+  });
+  await fastify.register(websocket);
+  await fastify.register(metricsPlugin, { // Register the metrics plugin to expose Prometheus metrics at /metrics
+    endpoint: "/metrics",
+    enableDefaultMetrics: true,
+  });
 
 fastify.post("/api/register", (request, reply) => {
 	const { username, email, password } = request.body;
@@ -224,3 +250,12 @@ export function loop(room) {
   broadcaster(room.players.keys(), null, JSON.stringify({ type: "state", state: room.state }));
   // console.log("Broadcasted state:", room.state);
 }
+
+await fastify.listen({ port: 3000, host: "0.0.0.0" }); 
+fastify.log.info("Server listening on port 3000");
+  } catch (err) {
+    fastify.log.error(err);
+    process.exit(1);
+  }
+}
+start();

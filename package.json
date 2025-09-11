@@ -1,4 +1,13 @@
 {
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "babylonjs": "^8.18.0",
+    "fastify-metrics": "^12.1.0",
+    "sqlite3": "^5.1.7"
+  },
   "private": true,
   "workspaces": [
     "./services/frontend",
