@@ -8,9 +8,16 @@ scrape_configs:
   - job_name: 'nginx'
     static_configs:
       - targets: ['nginx-exporter:9113']
-  - job_name: 'frontend'
-    static_configs:
-      - targets: ['frontend:5173']
   - job_name: 'backend'
     static_configs:
       - targets: ['backend:3000']
+  # - job_name: 'frontend'
+  #   static_configs:
+  #     - targets: ['frontend:5173']
+
+
+# remote_write:               # Remote write configuration for Grafana Cloud
+#   - url: <https://your-remote-write-endpoint>
+#     basic_auth:
+#       username: <your user name>
+#       password: <Your Grafana.com API Key>

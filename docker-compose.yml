@@ -12,6 +12,20 @@ services:
     networks:
       - transcendence-net
     restart: unless-stopped
+    command:
+      - '--storage.tsdb.retention.time=15d' # Retain data for 15 days
+
+  grafana:  # Grafana for visualizing Prometheus data
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    networks:
+      - transcendence-net
+    depends_on:
+      - prometheus
+    volumes:
+      - grafana_data:/var/lib/grafana
   
   nginx:
     build:
@@ -32,11 +46,11 @@ services:
     networks:
       - transcendence-net
 
-  nginx-exporter:
+  nginx-exporter:  # Prometheus exporter for Nginx
     image: nginx/nginx-prometheus-exporter:latest
     container_name: nginx-exporter
     command:
-      -nginx.scrape-uri=http://nginx:80/stub_status
+      - -nginx.scrape-uri=http://nginx:80/stub_status
     ports:
       - "9113:9113"
     networks:
@@ -77,6 +91,7 @@ volumes:
   prometheus_data:
   frontend_node_modules:
   backend_data:
+  grafana_data:
 
 networks:
   transcendence-net:
