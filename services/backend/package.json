@@ -8,8 +8,9 @@
   },
   "dependencies": {
     "@app/shared": "*",
-    "@fastify/cookie": "^11.0.2",
+    "@fastify/cookie": "^7.4.0",
     "@fastify/cors": "^8.0.0",
+    "@fastify/jwt": "^10.0.0",
     "@fastify/websocket": "^8.0.0",
     "bcryptjs": "^3.0.2",
     "fastify": "^4.0.0",

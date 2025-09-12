@@ -7,8 +7,8 @@ import { initDb } from "./initDatabases.js";
 import { broadcaster } from "./utils.js";
 import { buildWorld, movePaddles, moveBall } from "@app/shared";
 import fastifyCookie from "@fastify/cookie";
+import fastifyJWT from "@fastify/jwt";
 import bcrypt from "bcryptjs";			// Password encryption
-import * as jwt from "jsonwebtoken";	// JWT session tokens
 import qrcode from "qrcode";			// QR code gen for autheticator app
 import { authenticator } from "otplib";	// Authenticator App functionality
 // import * as Shared from "@app/shared";
@@ -26,7 +26,15 @@ const db = new sqlite3.Database("./data/database.sqlite");
 await fastify.register(cors, {
 	origin: true,
 });
+
 await fastify.register(websocket);
+
+await fastify.register(fastifyJWT, {
+  secret: process.env.JWT_SECRET || "supersecret"
+})
+
+await fastify.register(fastifyCookie);
+
 // Call the initDb function to create the tables by the time the server starts
 initDb(db);
 
@@ -121,21 +129,6 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
   });
 });
 
-
-const JWT_SECRET = process.env.JWT_SECRET || "supersecret"; // Temporary, use env vars
-const ACCESS_TOKEN_TTL = "15m";
-
-// Helpers for signing access and refresh Json Web Tokens
-function signAccessToken(user) {
-	return jwt.sign(
-		{ sub: user.id, username: user.username },
-		JWT_SECRET,
-		{ expiresIn: ACCESS_TOKEN_TTL }
-	);
-}
-
-await fastify.register(fastifyCookie);
-
 fastify.post("/api/register", (request, reply) => {
 	const { username, email, password } = request.body;
 
@@ -182,9 +175,8 @@ fastify.post("/api/login", (request, reply) => {
 				return reply.code(400).send({ error: "Invalid credentials" });
 
 			// Issue temporary JWT
-			const tempToken = jwt.sign(
+			const tempToken = fastify.jwt.sign(
 				{ sub: user.id, stage: "mfa" },
-				JWT_SECRET,
 				{ expiresIn: "5m" }
 			);
 			// ALWAYS require 2FA!
@@ -201,7 +193,7 @@ fastify.post("/api/verify-2fa", (request, reply) => {
 
 	let payload;
 	try {
-		payload = jwt.verify(tempToken, JWT_SECRET);
+		payload = fastify.jwt.verify(tempToken);
 	} catch (e) {
 		return reply.code(401).send({ error: "Invalid or expired token" });
 	}
@@ -220,7 +212,10 @@ fastify.post("/api/verify-2fa", (request, reply) => {
 			}
 
 			// Issue proper JWT and create session cookie (HttpOnly)
-			const accessToken = signAccessToken(user);
+			const accessToken = fastify.jwt.sign(
+				{ sub: user.id, username: user.username },
+				{ expiresIn: "15m" }
+			);
 			reply.setCookie("auth", accessToken, {
 				httpOnly: true,
 				sameSite: "lax",
@@ -254,15 +249,14 @@ fastify.get("/api/2fa-setup", (req, reply) => {
 fastify.get("/api/me", (request, reply) => {
 	try {
 		const token = request.cookies?.auth;
-		const payload = jwt.verify(token, JWT_SECRET);
+		const payload = fastify.jwt.verify(token);
 		reply.send({ id: payload.sub, username: payload.username });
 	} catch {
 		reply.code(401).send({ error: "Not Authenticated" });
 	}
 });
 
-fastify.post("/api/logout", (request, reply) => {
-	// Stuff
+fastify.post("/api/logout", (reply) => {
 	reply.clearCookie("auth", { path: "/" });
 	reply.send({ ok: true });
 });
