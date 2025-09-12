@@ -71,6 +71,21 @@ export class UserManager {
 class Login {
 	constructor(private root: HTMLElement, private userManager: UserManager) {}
 
+	async show2FAQr(userId: number) {
+		const qrContainer = document.createElement("div");
+		qrContainer.style.margin = "16px 0";
+		qrContainer.innerHTML = "<strong>Scan this QR code with your Authenticator app:</strong><br><img id='qr-img' style='max-width:220px;'>";
+		this.root.appendChild(qrContainer);
+
+		const res = await fetch(`https://${location.host}/api/2fa-setup?userId=${userId}`);
+		if (res.ok) {
+			const { qr } = await res.json();
+			(qrContainer.querySelector("#qr-img") as HTMLImageElement).src = qr;
+		} else {
+			qrContainer.innerHTML = "Failed to load QR code.";
+		}
+	}
+
 	init() {
 		const loginForm = this.root.querySelector('#loginForm') as HTMLFormElement;
 		const loginError = this.root.querySelector('#loginError') as HTMLParagraphElement;
@@ -128,10 +143,17 @@ class Login {
 			}
 
 			try {
-				const ok = await this.userManager.register(username, email, password);
-				if (ok) {
-					alert("Registration successful! Now log in.");
+				const res = await fetch(`https://${location.host}/api/register`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ username, email, password }),
+					credentials: "include"
+				});
+				if (res.ok) {
+					const user = await res.json();
+					alert("Registration successful! Now set up 2FA.");
 					registerError.textContent = "";
+					await this.show2FAQr(user.id);
 				} else {
 					registerError.textContent = "Registration failed. Username or email may already exist.";
 				}
