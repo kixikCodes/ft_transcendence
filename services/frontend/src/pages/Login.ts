@@ -93,6 +93,19 @@ class Login {
 		const registerForm = this.root.querySelector('#registerForm') as HTMLFormElement;
 		const registerError = this.root.querySelector('#registerError') as HTMLParagraphElement;
 
+		const buttons = this.root.querySelectorAll('.menu button');
+		const tooltip = this.root.querySelector('.tooltip') as HTMLDivElement;
+
+		buttons.forEach(btn => {
+		   btn.addEventListener('mouseenter', () => {
+			  tooltip.textContent = btn.getAttribute('data-tooltip') || "";
+		   });
+		   btn.addEventListener('mouseleave', () => {
+			  tooltip.textContent = "";
+		   });
+		});
+
+
 		// Login flow
 		loginForm.addEventListener('submit', async (event) => {
 			event.preventDefault();

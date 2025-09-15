@@ -24,7 +24,8 @@ const db = new sqlite3.Database("./data/database.sqlite");
 
 // Register CORS and WebSocket plugins
 await fastify.register(cors, {
-	origin: true,
+	origin: "https://localhost:8443",
+	credentials: true,
 });
 
 await fastify.register(websocket);
@@ -247,11 +248,18 @@ fastify.get("/api/2fa-setup", (req, reply) => {
 });
 
 fastify.get("/api/me", (request, reply) => {
+	console.log("Received /api/me request");
 	try {
 		const token = request.cookies?.auth;
+		console.log("Token from cookies:", token);
+		if (!token) throw new Error("No token");
+		// Verify and decode the token
 		const payload = fastify.jwt.verify(token);
-		reply.send({ id: payload.sub, username: payload.username });
+		console.log("Token payload:", payload);
+		reply.send({ id: payload.sub });
+		console.log("User authenticated:", payload.username);
 	} catch {
+		console.log("User not authenticated");
 		reply.code(401).send({ error: "Not Authenticated" });
 	}
 });
