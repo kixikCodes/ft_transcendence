@@ -28,6 +28,7 @@ export const HomeController = (root: HTMLElement) => {
   // Remote
   const userId = Number(localStorage.getItem("userId"));
   ws.connect(userId);
+
   game.getInputHandler().bindRemoteSender((dir) => {
     if (game.getInputHandler().isInputRemote() && ws)
       ws.send({ type: "input", direction: dir, userId: userId });

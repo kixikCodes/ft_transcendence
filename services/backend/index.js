@@ -241,13 +241,18 @@ export function startLoop(room) {
 }
 
 export function stopRoom(room, roomId) {
-  // Destroy the room and stop the game loop
-  if (room.loopInterval) clearInterval(room.loopInterval);
-  const index = rooms.findIndex(room => room.id === ws._roomId);
-  rooms.splice(index, 1);
-  //         // rooms.delete(ws._roomId);
-  //       }
-  // rooms.delete(roomId);
+  // Stop the loop for this room
+  if (room && room.loopInterval) {
+    clearInterval(room.loopInterval);
+    room.loopInterval = null;
+  }
+
+  // Remove from global rooms array (use passed roomId or room.id)
+  const idToRemove = roomId ?? (room && room.id);
+  if (typeof idToRemove !== "undefined") {
+    const index = rooms.findIndex(r => r.id === idToRemove);
+    if (index !== -1) rooms.splice(index, 1);
+  }
 }
 
 // This function is called every 33ms to update the game state based on the current state and player input.
@@ -297,12 +302,15 @@ export function loop(room) {
     }
 
     // Eject loser from tournament
-    if (loser && loser.ws.readyState === 1) {
-      loser.ws.send(JSON.stringify({
-        type: "tournamentEliminated",
-        message: "You lost and are out of the tournament"
-      }));
-      try { loser.ws.close(); } catch {}
+    if (loser && loser.ws && loser.ws.readyState === 1) {
+      try {
+        loser.ws.send(JSON.stringify({
+          type: "tournamentEliminated",
+          message: "You lost and are out of the tournament"
+        }));
+      } catch (err) {
+        console.warn("Failed to notify eliminated player:", err?.message || err);
+      }
     }
   }
 

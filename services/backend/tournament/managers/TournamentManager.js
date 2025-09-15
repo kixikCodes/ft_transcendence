@@ -50,23 +50,36 @@ export class TournamentManager {
     const room = new Room();
     rooms.push(room);
 
-    // Add both players into the room
+    // Add both players into the room (use provided ws if present; gameRooms will make safe placeholders)
     room.addPlayer(p1.id, p1.ws);
     room.addPlayer(p2.id, p2.ws);
 
-    // Tell each player they joined
+    // assign match id and backref so loop/record logic can find the tournament context
+    const matchId = this.matchCounter++;
+    room.matchId = matchId;
+    room.tournamentManager = this;
+
+    // Tell each player they joined (only for real connected sockets)
     for (const [ws, player] of room.players) {
-      ws.send(JSON.stringify({
-        type: "join",
-        roomId: room.id,
-        side: player.side,
-        gameConfig: room.config,
-        state: room.state,
-      }));
+      // only send to actual open websocket connections
+      if (ws && typeof ws.send === "function" && ws.readyState === 1) {
+        try {
+          ws.send(JSON.stringify({
+            type: "join",
+            roomId: room.id,
+            side: player.side,
+            gameConfig: room.config,
+            state: room.state,
+          }));
+        } catch (err) {
+          // ignore send errors for now
+          console.warn("Failed to send join to player socket:", err?.message || err);
+        }
+      }
     }
 
     return {
-      id: this.matchCounter++,
+      id: matchId,
       round,
       time: Date.now(),
       room,
@@ -100,23 +113,15 @@ export class TournamentManager {
     };
 
     for (const player of tournament.players) {
-      try
-      {
-        if (player.ws && player.ws.readyState === 1)
-        {
+      if (player.ws && player.ws.readyState === 1) {
+        try {
           player.ws.send(JSON.stringify({
             type: "tournamentUpdate",
             state: stateToSend
           }));
+        } catch (err) {
+          console.warn("Failed to send tournamentUpdate to player", player.id, err?.message || err);
         }
-        else
-        {
-          console.warn(`Skipping player ${player.id}, socket not ready`);
-        }
-      }
-      catch (err)
-      {
-        console.error(`Failed to send tournamentUpdate to player ${player.id}:`, err);
       }
     }
   }
