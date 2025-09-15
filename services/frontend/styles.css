@@ -1,49 +1,4 @@
 @import "tailwindcss";
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-/* Global Styles */
-/* * {
-	box-sizing: border-box;
-} */
-
-/* html, body {
-	height: 100%;
-} */
-
-/* body {
-	margin: 0;
-	padding: 0;
-	background: linear-gradient(135deg, #b8f2e6, #ffa5b2);
-	min-height: 100%;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: flex-start;
-} */
-
-/* Heading */
-/* h1 {
-	color: #ffa5b2;
-	font-family: 'Trebuchet MS', sans-serif;
-	font-size: 3em;
-	margin-bottom: 30px;
-	text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
-} */
-
-/* Canvas Styling */
-/* #gameCanvas {
-	border: 8px solid #ffa5b2;
-	background-color: #ffffff;
-	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-	display: block;
-	margin: 0 auto 30px auto;
-	width: 1440px;
-	height: 816px;
-	max-width: 95vw;
-	max-height: 80vh;
-	border-radius: 12px;
-} */
 
 /* Button Styling */
 #startBtn {
@@ -88,17 +43,11 @@ form {
 
 /* OLD RAW CSS (HOME PAGE) */
 
-/* 
+
 body {
   font-size: 1.5rem;
   color: #eee;
   font-family: "Quantico", sans-serif;
-  margin: 0;
-  padding: 100px 20px;
-  display: flex;
-  flex-direction: row;
-  gap: 20px;
-  align-items: stretch;
 
   background: linear-gradient(180deg, #111 0%, #111 40%, #ad2648 100%);
   background-size: 400% 400%;
@@ -115,9 +64,10 @@ body {
   100% { background-position: 50% 0%; }
 }
 
+/*
 .container {
   display: grid;
-  grid-template-columns: 250px 1fr 250px;
+  grid-template-columns: 250px 1fr 250sx;
   gap: 20px;
   margin: 20px auto;
   box-sizing: border-box;
