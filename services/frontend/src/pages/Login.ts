@@ -123,7 +123,7 @@ class Login {
 					loginError.textContent = 'Invalid username or password.';
 					return;
 				}
-
+				
 				const code = prompt("Enter your 2FA code:");
 				if (!code) {
 					loginError.textContent = "2FA code required.";
@@ -132,7 +132,6 @@ class Login {
 
 				const ok = await this.userManager.verify2FA(code, tempToken);
 				if (ok) {
-					alert("Login successful (with 2FA)!");
 					navigate("/");
 				} else {
 					loginError.textContent = "Invalid 2FA code.";
@@ -144,6 +143,7 @@ class Login {
 		});
 
 		// Register flow
+		// TODO: Add 2FA verification step after QR is displayed!
 		registerForm.addEventListener('submit', async (event) => {
 			event.preventDefault();
 			const username = (this.root.querySelector('#registerUsername') as HTMLInputElement).value.trim();
@@ -164,9 +164,21 @@ class Login {
 				});
 				if (res.ok) {
 					const user = await res.json();
-					alert("Registration successful! Now set up 2FA.");
 					registerError.textContent = "";
 					await this.show2FAQr(user.id);
+					// TODO: Add Verify Button - press prompts the 2FA verification step.
+					const code = prompt("Enter your 2FA code:");
+					if (!code) {
+						registerError.textContent = "2FA code required.";
+						return;
+					}
+					const ok = await this.userManager.verify2FA(code, tempToken); // FIXME: I'll need to quickly make a token.
+					if (ok) {
+						alert("Account succesfully verified!");
+					} else {
+						registerError.textContent = "Invalid 2FA code."; // FIXME: If they fail to provide a code we must then
+						// go back and delete the registered user!
+					}
 				} else {
 					registerError.textContent = "Registration failed. Username or email may already exist.";
 				}
