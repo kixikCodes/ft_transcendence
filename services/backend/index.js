@@ -284,12 +284,15 @@ export function loop(room) {
     clearInterval(room.loopInterval);
     room.state.started = false;
 
+    const winnerSide = room.state.scoreL >= 5 ? "left" : "right";
+    const loserSide = winnerSide === "left" ? "left" : "right";
+
     // Find winner and loser entries (socket + player)
     const winnerEntry = [...room.players.entries()].find(
-      ([sock, player]) => sock._side === (room.state.scoreL >= 5 ? "left" : "right")
+      ([sock, player]) => sock._side === winnerSide
     );
     const loserEntry = [...room.players.entries()].find(
-      ([sock, player]) => sock._side === (winnerSide === "left" ? "right" : "left")
+      ([sock, player]) => sock._side === loserSide
     );
 
     const winner = winnerEntry?.[1];
@@ -309,14 +312,7 @@ export function loop(room) {
 
       // Eject loser from tournament
       if (loserSock && loserSock.readyState === 1) {
-        try {
-          loserSock.send(JSON.stringify({
-            type: "tournamentEliminated",
-            message: "You lost and are out of the tournament"
-          }));
-        } catch (err) {
-          console.warn("Failed to notify eliminated player:", err?.message || err);
-        }
+        room.removePlayer(loser.ws);
       }
     }
   }
