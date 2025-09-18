@@ -35,6 +35,37 @@ export class Room {
     };
   }
 
+
+  closeRoom(room) {
+    if (!room) return;
+
+    // Stop loop if running
+    if (room.loopInterval) {
+      clearInterval(room.loopInterval);
+      room.loopInterval = null;
+    }
+
+    // Inform and close all sockets
+    for (const [ws] of room.players) {
+      if (ws && ws.readyState === 1) {
+        try {
+          ws.send(JSON.stringify({ type: "reset" }));
+          ws.close();
+        } catch {}
+      }
+    }
+
+    // Clear player map
+    room.players.clear();
+
+    // Remove from global rooms array
+    const idx = rooms.findIndex(r => r.id === room.id);
+    if (idx !== -1) rooms.splice(idx, 1);
+
+    console.log(`Closed room ${room.id}`);
+  }
+
+
   addPlayer(userId, ws) {
     // If this player is already in the room, do nothing
     const side = this.players.size % 2 === 0 ? "left" : "right";

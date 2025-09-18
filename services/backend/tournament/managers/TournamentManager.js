@@ -143,9 +143,18 @@ export class TournamentManager {
       match.room.loopInterval = null;
     }
 
+    // add winner to waiting area
+    //this.tournament.waitingArea.push(match.winner);
+
+    // remove losers from tournament
+    this.tournament.players = this.tournament.players.filter(
+      (p) => p.id !== match.loser.id
+    );
+
     this.tournament.waitingArea.push(match.winner);
     this.checkRoundReady();
     this.broadcastTournament();
+    //match.room.closeRoom(match.room);
   }
 
   checkRoundReady() {
@@ -167,6 +176,7 @@ export class TournamentManager {
 
   advanceRound() {
     const winners = this.tournament.waitingArea;
+    this.tournament.size /= 2;
     this.tournament.waitingArea = [];
 
     const newMatches = [];

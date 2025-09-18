@@ -299,22 +299,9 @@ export function loop(room) {
     const loserSock = loserEntry?.[0];
     const loser = loserEntry?.[1];
 
-    if (winner && loser) {
-      broadcaster(room.players.keys(), null, JSON.stringify({
-        type: "matchOver",
-        winnerId: winner.userId,
-        loserId: loser.userId
-      }));
-
-      if (room.tournamentManager && room.matchId !== undefined) {
+    if (winner && loser && room.tournamentManager && room.matchId !== undefined) {
         room.tournamentManager.recordMatchResult(room.matchId, winner.userId);
       }
-
-      // Eject loser from tournament
-      if (loserSock && loserSock.readyState === 1) {
-        room.removePlayer(loser.ws);
-      }
-    }
   }
 
 }
