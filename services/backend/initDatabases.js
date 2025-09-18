@@ -14,8 +14,7 @@ export function initDb(db) {
 			losses INTEGER DEFAULT 0,
 			level INTEGER DEFAULT 1,
 			status TEXT DEFAULT 'ok',
-			friends TEXT DEFAULT '',
-			blocks TEXT DEFAULT '',
+			mfa_enabled BOOL DEFAULT 0,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 			)
 		`);

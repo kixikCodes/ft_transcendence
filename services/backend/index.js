@@ -264,8 +264,22 @@ fastify.post("/api/login", (request, reply) => {
 				{ sub: user.id, stage: "mfa" },
 				{ expiresIn: "5m" }
 			);
-			// ALWAYS require 2FA!
-			reply.send({ mfa_required: true, tempToken });
+			if (user.mfa_enabled) // 2FA enabled, just pass tempToken
+				reply.send({ mfa_required: true, tempToken });
+			else { // 2FA disabled, issue full access token in cookies
+				const accessToken = fastify.jwt.sign(
+					{ sub: user.id, username: user.username },
+					{ expiresIn: "15m" }
+				);
+				reply.setCookie("auth", accessToken, {
+					httpOnly: true,
+					sameSite: "lax",
+					secure: true,
+					path: "/",
+					maxAge: 15 * 60,
+				});
+				reply.send({ mfa_required: false, user: { id: user.id, username: user.username, email: user.email } });
+			}
 		}
 	);
 });
@@ -324,6 +338,12 @@ fastify.get("/api/2fa-setup", (req, reply) => {
 				return reply.code(500).send({ error: err.message });
 			if (!user)
 				return reply.code(400).send({ error: "User not found" });
+
+			// If mfa_enabled is 0, set it to 1
+			if (user.mfa_enabled === 0) {
+				db.run("UPDATE users SET mfa_enabled = 1 WHERE id = ?", [userId]);
+			}
+
 			const otpauth = authenticator.keyuri(user.username, "Trancsendence", user.totp_secret);
 			const qr = await qrcode.toDataURL(otpauth);
 			reply.send({ qr });

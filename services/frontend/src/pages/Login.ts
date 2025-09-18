@@ -1,20 +1,11 @@
+import { FlowGraphCubeRootBlock } from "babylonjs";
 import { navigate } from "../router/router.js";
 type ApiUser = { id: number; username?: string; email?: string };
 
 export class UserManager {
 	private currentUser: ApiUser | null = null;
 
-	async register(username: string, email: string, password: string): Promise<boolean> {
-		const res = await fetch(`https://${location.host}/api/register`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ username, email, password }),
-			credentials: "include"
-		});
-		return res.ok;
-	}
-
-	async login(username: string, password: string): Promise<string | null> {
+	async login(username: string, password: string): Promise<{ tempTok: string, mfa: boolean } | null> {
 		const res = await fetch(`https://${location.host}/api/login`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
@@ -23,10 +14,11 @@ export class UserManager {
 		});
 		if (!res.ok) return null;
 		const data  = await res.json();
-		if (data.mfa_required && data.tempToken) {
-			return data.tempToken;
+		if (!data.mfa_required) {
+			this.currentUser = data.user;
+			return { tempTok: "", mfa: false }; // No 2FA
 		}
-		return null;
+		return { tempTok: data.tempToken, mfa: true }; // Yes 2FA
 	}
 
 	async verify2FA(code: string, tempToken: string): Promise<boolean> {
@@ -71,20 +63,20 @@ export class UserManager {
 class Login {
 	constructor(private root: HTMLElement, private userManager: UserManager) {}
 
-	async show2FAQr(userId: number) {
-		const qrContainer = document.createElement("div");
-		qrContainer.style.margin = "16px 0";
-		qrContainer.innerHTML = "<strong>Scan this QR code with your Authenticator app:</strong><br><img id='qr-img' style='max-width:220px;'>";
-		this.root.appendChild(qrContainer);
+	// async show2FAQr(userId: number) {
+	// 	const qrContainer = document.createElement("div");
+	// 	qrContainer.style.margin = "16px 0";
+	// 	qrContainer.innerHTML = "<strong>Scan this QR code with your Authenticator app:</strong><br><img id='qr-img' style='max-width:220px;'>";
+	// 	this.root.appendChild(qrContainer);
 
-		const res = await fetch(`https://${location.host}/api/2fa-setup?userId=${userId}`);
-		if (res.ok) {
-			const { qr } = await res.json();
-			(qrContainer.querySelector("#qr-img") as HTMLImageElement).src = qr;
-		} else {
-			qrContainer.innerHTML = "Failed to load QR code.";
-		}
-	}
+	// 	const res = await fetch(`https://${location.host}/api/2fa-setup?userId=${userId}`);
+	// 	if (res.ok) {
+	// 		const { qr } = await res.json();
+	// 		(qrContainer.querySelector("#qr-img") as HTMLImageElement).src = qr;
+	// 	} else {
+	// 		qrContainer.innerHTML = "Failed to load QR code.";
+	// 	}
+	// }
 
 	init() {
 		const loginForm = this.root.querySelector('#loginForm') as HTMLFormElement;
@@ -118,23 +110,26 @@ class Login {
 			}
 
 			try {
-				const tempToken = await this.userManager.login(username, password);
-				if (!tempToken) {
+				const result = await this.userManager.login(username, password);
+				if (!result) {
 					loginError.textContent = 'Invalid username or password.';
 					return;
 				}
 				
-				const code = prompt("Enter your 2FA code:");
-				if (!code) {
-					loginError.textContent = "2FA code required.";
-					return;
-				}
-
-				const ok = await this.userManager.verify2FA(code, tempToken);
-				if (ok) {
-					navigate("/");
-				} else {
-					loginError.textContent = "Invalid 2FA code.";
+				if (!result.mfa)
+					navigate("/"); // Just log them in and take them to home page.
+				else // If 2FA step is required, continue with it
+				{
+					const code = prompt("Enter your 2FA code:");
+					if (!code) {
+						loginError.textContent = "2FA code required.";
+						return;
+					}
+					const ok = await this.userManager.verify2FA(code, result.tempTok);
+					if (ok)
+						navigate("/");
+					else
+						loginError.textContent = "Invalid 2FA code.";
 				}
 			} catch (err) {
 				console.error(err);
@@ -143,7 +138,6 @@ class Login {
 		});
 
 		// Register flow
-		// TODO: Add 2FA verification step after QR is displayed!
 		registerForm.addEventListener('submit', async (event) => {
 			event.preventDefault();
 			const username = (this.root.querySelector('#registerUsername') as HTMLInputElement).value.trim();
@@ -165,20 +159,7 @@ class Login {
 				if (res.ok) {
 					const user = await res.json();
 					registerError.textContent = "";
-					await this.show2FAQr(user.id);
-					// TODO: Add Verify Button - press prompts the 2FA verification step.
-					const code = prompt("Enter your 2FA code:");
-					if (!code) {
-						registerError.textContent = "2FA code required.";
-						return;
-					}
-					const ok = await this.userManager.verify2FA(code, tempToken); // FIXME: I'll need to quickly make a token.
-					if (ok) {
-						alert("Account succesfully verified!");
-					} else {
-						registerError.textContent = "Invalid 2FA code."; // FIXME: If they fail to provide a code we must then
-						// go back and delete the registered user!
-					}
+					alert(`Succesfully registered new user: ${user.username}`);
 				} else {
 					registerError.textContent = "Registration failed. Username or email may already exist.";
 				}
