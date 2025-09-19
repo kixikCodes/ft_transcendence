@@ -5,9 +5,9 @@ type Route = { template: string; auth?: boolean; };
 const routes: Record<string, Route> = {
     "/": { template: "/pages/Home.html", auth: true },
     "/login": { template: "/pages/Login.html", auth: false },
-    "/register": { template: "/pages/Register.html", auth: false },
     "/profile": { template: "/pages/Profile.html", auth: true },
     "/dashboard": { template: "/pages/Dashboard.html", auth: true },
+    "/tournament": { template: "/pages/Tournament.html", auth: true },
     "/404": { template: "/pages/404.html", auth: false },
 };
 
@@ -67,7 +67,7 @@ async function handleLocation(): Promise<void> {
             const { HomeController } = await import("/src/pages/Home.js");
             // Call the HomeController to set up event listeners and manage the home page
             // Teardown function when navigating away from the home page, the return code from HomeController is called
-            teardown = HomeController(root);
+            teardown = await HomeController(root);
         } else if (path === "/login") {
             console.log("Loading login page");
             const { mountLogin } = await import("/src/pages/Login.js");
@@ -77,6 +77,9 @@ async function handleLocation(): Promise<void> {
             teardown = () => {};
         } else if (path === "/dashboard") {
             const { mountDashboard } = await import("/src/pages/Dashboard.js");
+            teardown = await mountDashboard(root);
+        } else if (path === "/tournament") {
+            const { mountDashboard } = await import("/src/pages/Tournament.js");
             teardown = await mountDashboard(root);
         }
     } catch (e) {

@@ -26,6 +26,14 @@ export const HomeController = async (root: HTMLElement) => {
 		game.applyServerState(m.state);
 	});
 
+	const localBtn = root.querySelector<HTMLButtonElement>("local_play");
+	if (localBtn) {
+		localBtn.addEventListener('click', () => {
+			console.warn("Warn");
+			navigate("/tournament");
+		});
+	}
+
 	const buttons = root.querySelectorAll<HTMLButtonElement>('.menu button');
 	const tooltip = root.querySelector<HTMLDivElement>('.tooltip');
 	buttons.forEach(btn => {
