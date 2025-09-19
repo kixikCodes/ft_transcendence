@@ -223,8 +223,7 @@ fastify.post("/api/register", (request, reply) => {
 	const salt = bcrypt.genSaltSync(15); // Salt Password
 	const hash = bcrypt.hashSync(password, salt); // Hash salted Password
 	const secret = authenticator.generateSecret(); // Create unique key for authenticator app (2FA)
-	db.run(
-		"INSERT INTO users (username, email, password_hash, totp_secret) VALUES (?, ?, ?, ?)",
+	db.run("INSERT INTO users (username, email, password_hash, totp_secret) VALUES (?, ?, ?, ?)",
 		[username, email, hash, secret],
 		function (err) {
 			if (err) {
@@ -246,8 +245,7 @@ fastify.post("/api/login", (request, reply) => {
 	if (!username || !password)
 		return reply.code(400).send({ error: "Missing fields" });
 
-	db.get(
-		"SELECT * FROM users WHERE username = ?",
+	db.get("SELECT * FROM users WHERE username = ?",
 		[username],
 		(err, user) => {
 			if (err)
@@ -296,8 +294,7 @@ fastify.post("/api/verify-2fa", (request, reply) => {
 	} catch (e) {
 		return reply.code(401).send({ error: "Invalid or expired token" });
 	}
-	db.get(
-		"SELECT * FROM users WHERE id = ?",
+	db.get("SELECT * FROM users WHERE id = ?",
 		[payload.sub],
 		(err, user) => {
 			if (err)
@@ -330,8 +327,7 @@ fastify.post("/api/verify-2fa", (request, reply) => {
 
 fastify.get("/api/2fa-setup", (req, reply) => {
 	const userId = req.query.userId;
-	db.get(
-		"SELECT * FROM users WHERE id = ?",
+	db.get("SELECT * FROM users WHERE id = ?",
 		[userId],
 		async (err, user) => {
 			if (err)
@@ -371,6 +367,33 @@ fastify.get("/api/me", (request, reply) => {
 fastify.post("/api/logout", (reply) => {
 	reply.clearCookie("auth", { path: "/" });
 	reply.send({ ok: true });
+});
+
+fastify.post("/api/delete-account", (request, reply) => {
+	const { password } = request.body;
+	const token = request.cookies?.auth;
+	if (!token) return reply.code(401).send({ error: "Not authenticated" });
+
+	let payload;
+	try {
+		payload = fastify.jwt.verify(token);
+	} catch {
+		return reply.code(401).send({ error: "Invalid token" });
+	}
+	const userId = payload.sub;
+
+	const confirmed = bcrypt.compareSync(password, user.password_hash);
+	if (!confirmed)
+		return reply.code(400).send({ error: "Invalid credentials" });
+
+	db.run("DELETE FROM users WHERE id = ?",
+		[userId],
+		function (err) {
+			if (err) return reply.code(500).send({ error: err.message });
+			reply.clearCookie("auth", { path: "/" });
+			reply.send({ success: true });
+		}
+	);
 });
 
 export function startLoop(room) {

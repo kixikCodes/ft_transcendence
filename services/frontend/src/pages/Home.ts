@@ -39,7 +39,7 @@ export const HomeController = async (root: HTMLElement) => {
 		});
 	});
 
-	const logoutBtn = root.querySelector<HTMLButtonElement>(".logout");
+	const logoutBtn = root.querySelector<HTMLButtonElement>(".logout"); //FIXME: This for some bizzarre reason does not work.
 	if (logoutBtn) {
 		logoutBtn.addEventListener("click", () => {
 			fetch(`https://${location.host}/api/logout`, {
@@ -56,8 +56,9 @@ export const HomeController = async (root: HTMLElement) => {
 	const closeSettingsBtn = root.querySelector<HTMLButtonElement>("#closeSettingsBtn");
 	const enable2faBtn = root.querySelector<HTMLButtonElement>("#enable2faBtn");
 	const qrContainer = root.querySelector<HTMLDivElement>("#qrContainer");
+	const deleteAccountBtn = root.querySelector<HTMLButtonElement>("#deleteAccountBtn");
 
-	if (settingsBtn && settingsModal && closeSettingsBtn && enable2faBtn && qrContainer) {
+	if (settingsBtn && settingsModal && closeSettingsBtn && enable2faBtn && qrContainer && deleteAccountBtn) {
 			settingsBtn.addEventListener("click", () => {
 			settingsModal.classList.remove("hidden");
 			qrContainer.innerHTML = "";
@@ -68,7 +69,7 @@ export const HomeController = async (root: HTMLElement) => {
 			qrContainer.innerHTML = "";
 		});
 
-		enable2faBtn.addEventListener("click", async () => {
+		enable2faBtn.addEventListener("click", async () => { //TODO: Must first check if the user already has 2FA enabled, and in that case turn this button into a disable 2FA.
 			enable2faBtn.disabled = true;
 			enable2faBtn.textContent = "Loading...";
 			qrContainer.innerHTML = "";
@@ -85,8 +86,27 @@ export const HomeController = async (root: HTMLElement) => {
 			} catch {
 				qrContainer.innerHTML = `<div class="text-red-400">Error loading QR code.</div>`;
 			}
-				enable2faBtn.disabled = false;
-				enable2faBtn.textContent = "Enable 2FA";
+			enable2faBtn.disabled = false;
+			enable2faBtn.textContent = "Enable 2FA";
+		});
+
+		deleteAccountBtn.addEventListener("click", async () => { //FIXME: This ALSO doesn't work
+			try {
+				const password = prompt("Are you sure? To confirm account deletion please enter your password:");
+				if (!password)
+					console.debug("No password provided");
+				const res = await fetch(`https://${location.host}/api/delete-account`, {
+					method: "POST",
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ password }),
+					credentials: "include"
+				});
+				if (!res.ok)
+					console.debug("Invalid password");
+				navigate("/login");
+			} catch (err) {
+				console.error("Something went wrong");
+			}
 		});
 	}
 
