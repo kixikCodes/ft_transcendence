@@ -39,27 +39,22 @@ export const HomeController = async (root: HTMLElement) => {
 		});
 	});
 
-	const logoutBtn = root.querySelector<HTMLButtonElement>(".logout"); //FIXME: This for some bizzarre reason does not work.
-	if (logoutBtn) {
-		logoutBtn.addEventListener("click", () => {
-			fetch(`https://${location.host}/api/logout`, {
-				method: "POST",
-				credentials: "include"
-			});
-			navigate("/login");
-		});
-	}
-
 	// Settings modal logic
 	const settingsBtn = root.querySelector<HTMLButtonElement>("#settingsBtn");
 	const settingsModal = root.querySelector<HTMLDivElement>("#settingsModal");
 	const closeSettingsBtn = root.querySelector<HTMLButtonElement>("#closeSettingsBtn");
 	const enable2faBtn = root.querySelector<HTMLButtonElement>("#enable2faBtn");
 	const qrContainer = root.querySelector<HTMLDivElement>("#qrContainer");
+	const logoutBtn = root.querySelector<HTMLButtonElement>("#logoutBtn");
 	const deleteAccountBtn = root.querySelector<HTMLButtonElement>("#deleteAccountBtn");
+	const deletionForm = root.querySelector<HTMLFormElement>("#deletionForm");
+	const deletePasswordInput = root.querySelector<HTMLInputElement>("#deletePassword");
+	const confirmDeleteBtn = root.querySelector<HTMLButtonElement>("#confirmDeleteBtn");
 
-	if (settingsBtn && settingsModal && closeSettingsBtn && enable2faBtn && qrContainer && deleteAccountBtn) {
-			settingsBtn.addEventListener("click", () => {
+	if (settingsBtn && settingsModal && closeSettingsBtn && enable2faBtn && qrContainer && logoutBtn
+		&& deleteAccountBtn && deletionForm && deletePasswordInput && confirmDeleteBtn) {
+
+		settingsBtn.addEventListener("click", () => {
 			settingsModal.classList.remove("hidden");
 			qrContainer.innerHTML = "";
 		});
@@ -90,23 +85,48 @@ export const HomeController = async (root: HTMLElement) => {
 			enable2faBtn.textContent = "Enable 2FA";
 		});
 
-		deleteAccountBtn.addEventListener("click", async () => { //FIXME: This ALSO doesn't work
-			try {
-				const password = prompt("Are you sure? To confirm account deletion please enter your password:");
-				if (!password)
-					console.debug("No password provided");
-				const res = await fetch(`https://${location.host}/api/delete-account`, {
-					method: "POST",
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ password }),
-					credentials: "include"
-				});
-				if (!res.ok)
-					console.debug("Invalid password");
-				navigate("/login");
-			} catch (err) {
-				console.error("Something went wrong");
+		logoutBtn.addEventListener("click", async () => {
+			await fetch(`https://${location.host}/api/logout`, { method: "POST" });
+			navigate("/login");
+		});
+
+		deleteAccountBtn.addEventListener("click", () => {
+			deletionForm.classList.remove("hidden");
+			deletePasswordInput.value = "";
+			deletePasswordInput.focus();
+		});
+
+		deletionForm.addEventListener("submit", async (event) => {
+			event.preventDefault();
+			const password = deletePasswordInput.value.trim();
+			if (password) {
+				try {
+					const res = await fetch(`https://${location.host}/api/delete-account`, {
+						method: "POST",
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ userId, password }),
+						credentials: "include"
+					});
+					if (res.ok)
+						navigate("/login");
+					else {
+						deletePasswordInput.value = "";
+						deletePasswordInput.placeholder = "Invalid password";
+					}
+				} catch (err) {
+					console.error("Something went wrong");
+				}
+			} else {
+				deletePasswordInput.value = "";
+				deletePasswordInput.placeholder = "Please enter your password";
 			}
+		});
+
+		closeSettingsBtn.addEventListener("click", () => {
+			settingsModal.classList.add("hidden");
+			qrContainer.innerHTML = "";
+			deletionForm.classList.add("hidden");
+			deletePasswordInput.value = "";
 		});
 	}
 
@@ -122,5 +142,9 @@ export const HomeController = async (root: HTMLElement) => {
 			closeSettingsBtn.removeEventListener("click", () => {});
 		if (enable2faBtn)
 			enable2faBtn.removeEventListener("click", () => {});
+		if (logoutBtn)
+			logoutBtn.removeEventListener("click", () => {});
+		if (deleteAccountBtn)
+			deleteAccountBtn.removeEventListener("click", () => {});
 	};
 };

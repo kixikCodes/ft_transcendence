@@ -370,21 +370,20 @@ fastify.post("/api/logout", (reply) => {
 });
 
 fastify.post("/api/delete-account", (request, reply) => {
-	const { password } = request.body;
-	const token = request.cookies?.auth;
-	if (!token) return reply.code(401).send({ error: "Not authenticated" });
-
-	let payload;
-	try {
-		payload = fastify.jwt.verify(token);
-	} catch {
-		return reply.code(401).send({ error: "Invalid token" });
-	}
-	const userId = payload.sub;
-
-	const confirmed = bcrypt.compareSync(password, user.password_hash);
-	if (!confirmed)
-		return reply.code(400).send({ error: "Invalid credentials" });
+	const { userId, password } = request.body;
+	
+	db.get("SELECT * FROM users WHERE id = ?",
+		[userId],
+		(err, user) => {
+			if (err)
+				return reply.code(500).send({ error: err.message });
+			if (!user)
+				return reply.code(400).send({ error: "Invalid credentials" });
+			const isValid = bcrypt.compareSync(password, user.password_hash);
+			if (!isValid)
+				return reply.code(400).send({ error: "Invalid credentials" });
+		}
+	);
 
 	db.run("DELETE FROM users WHERE id = ?",
 		[userId],
