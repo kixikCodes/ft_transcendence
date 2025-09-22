@@ -5,6 +5,71 @@ import { Derived } from "@app/shared";
 import { Settings } from "../game/GameSettings.js";
 import { navigate } from "../router/router.js";
 
+async function update2FAButton(userId: number, enable2faBtn: HTMLButtonElement, qrContainer: HTMLDivElement) { //FIXME: THIS DOE NOT WORK
+	const userDetailsRes = await fetch(`https://${location.host}/api/users?id=${userId}`);
+	const userDetailsArr = await userDetailsRes.json();
+	const userDetails = Array.isArray(userDetailsArr) ? userDetailsArr[0] : null;
+	const mfaEnabled = userDetails?.mfa_enabled === 1;
+
+	// Remove previous click listeners
+	const newBtn = enable2faBtn.cloneNode(true) as HTMLButtonElement;
+	enable2faBtn.parentNode?.replaceChild(newBtn, enable2faBtn);
+
+	if (mfaEnabled) {
+		newBtn.textContent = "Disable 2FA";
+		newBtn.classList.remove("bg-teal-400");
+		newBtn.classList.add("bg-red-500");
+		newBtn.onclick = async () => {
+			const code = prompt("Enter your current 2FA code to disable:");
+			if (!code) return;
+			newBtn.disabled = true;
+			newBtn.textContent = "Disabling...";
+			try {
+				const res = await fetch(`https://${location.host}/api/disable-2fa`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ userId, code }),
+					credentials: "include"
+				});
+				if (res.ok) {
+					alert("2FA disabled.");
+					await update2FAButton(userId, newBtn, qrContainer);
+				} else {
+					alert("Invalid code or error disabling 2FA.");
+					newBtn.textContent = "Disable 2FA";
+				}
+			} finally {
+				newBtn.disabled = false;
+			}
+		};
+	} else {
+		newBtn.textContent = "Enable 2FA";
+		newBtn.classList.remove("bg-red-500");
+		newBtn.classList.add("bg-teal-400");
+		newBtn.onclick = async () => {
+			newBtn.disabled = true;
+			newBtn.textContent = "Loading...";
+			qrContainer.innerHTML = "";
+			try {
+				const res = await fetch(`https://${location.host}/api/2fa-setup?userId=${userId}`);
+				if (res.ok) {
+					const { qr } = await res.json();
+					qrContainer.innerHTML = `<div class="text-white mb-2">
+						Scan this QR code with your Authenticator app:
+						</div><img src="${qr}" alt="2FA QR" style="max-width:220px;">`;
+					await update2FAButton(userId, newBtn, qrContainer); // Update after enabling
+				} else {
+					qrContainer.innerHTML = `<div class="text-red-400">Failed to load QR code.</div>`;
+				}
+			} catch {
+				qrContainer.innerHTML = `<div class="text-red-400">Error loading QR code.</div>`;
+			}
+			newBtn.disabled = false;
+			newBtn.textContent = "Enable 2FA";
+		};
+	}
+}
+
 export const HomeController = async (root: HTMLElement) => {
 
 	// Game
@@ -57,32 +122,13 @@ export const HomeController = async (root: HTMLElement) => {
 		settingsBtn.addEventListener("click", () => {
 			settingsModal.classList.remove("hidden");
 			qrContainer.innerHTML = "";
+			if (enable2faBtn)
+        		update2FAButton(userId, enable2faBtn, qrContainer);
 		});
 
 		closeSettingsBtn.addEventListener("click", () => {
 			settingsModal.classList.add("hidden");
 			qrContainer.innerHTML = "";
-		});
-
-		enable2faBtn.addEventListener("click", async () => { //TODO: Must first check if the user already has 2FA enabled, and in that case turn this button into a disable 2FA.
-			enable2faBtn.disabled = true;
-			enable2faBtn.textContent = "Loading...";
-			qrContainer.innerHTML = "";
-			try {
-				const res = await fetch(`https://${location.host}/api/2fa-setup?userId=${userId}`);
-				if (res.ok) {
-					const { qr } = await res.json();
-					qrContainer.innerHTML = `<div class="text-white mb-2">
-						Scan this QR code with your Authenticator app:
-						</div><img src="${qr}" alt="2FA QR" style="max-width:220px;">`;
-				} else {
-					qrContainer.innerHTML = `<div class="text-red-400">Failed to load QR code.</div>`;
-				}
-			} catch {
-				qrContainer.innerHTML = `<div class="text-red-400">Error loading QR code.</div>`;
-			}
-			enable2faBtn.disabled = false;
-			enable2faBtn.textContent = "Enable 2FA";
 		});
 
 		logoutBtn.addEventListener("click", async () => {

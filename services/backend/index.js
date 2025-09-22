@@ -41,11 +41,15 @@ initDb(db);
 
 fastify.get("/api/users", async (request, reply) => {
   let params = [];
-  const fields = "id, username, wins, losses, level, created_at, status, friends, blocks";
-  let sql = `SELECT ${fields} FROM users ORDER BY created_at DESC`;
+  const fields = "id, username, wins, losses, level, created_at, status, friends, blocks, mfa_enabled";
+  let sql = `SELECT ${fields} FROM users`;
+  if (request.query.id) {
+    sql += " WHERE id = ?";
+    params.push(request.query.id);
+  }
+  sql += " ORDER BY created_at DESC";
   try {
     const rows = await fetchAll(db, sql, params);
-    console.log("Fetched users: ", rows);
     reply.send(rows);
   } catch (err) {
     reply.code(500).send({ error: err.message });
@@ -345,6 +349,28 @@ fastify.get("/api/2fa-setup", (req, reply) => {
 			reply.send({ qr });
 		}
 	);
+});
+
+fastify.post("/api/disable-2fa", async (request, reply) => {
+	const { userId, code } = request.body;
+	if (!userId || !code)
+		return reply.code(400).send({ error: "Missing fields" });
+
+	db.get("SELECT * FROM users WHERE id = ?", [userId], (err, user) => {
+		if (err) return reply.code(500).send({ error: err.message });
+		if (!user) return reply.code(400).send({ error: "User not found" });
+
+		if (!user.mfa_enabled)
+			return reply.code(400).send({ error: "2FA not enabled" });
+
+		if (!authenticator.check(code, user.totp_secret))
+			return reply.code(400).send({ error: "Invalid 2FA code" });
+
+		db.run("UPDATE users SET mfa_enabled = 0 WHERE id = ?", [userId], function (err) {
+			if (err) return reply.code(500).send({ error: err.message });
+			reply.send({ success: true });
+		});
+	});
 });
 
 fastify.get("/api/me", (request, reply) => {
