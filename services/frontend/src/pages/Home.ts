@@ -5,25 +5,25 @@ import { Derived } from "@app/shared";
 import { Settings } from "../game/GameSettings.js";
 import { navigate } from "../router/router.js";
 
-async function update2FAButton(userId: number, enable2faBtn: HTMLButtonElement, qrContainer: HTMLDivElement) { //FIXME: THIS DOE NOT WORK
+async function update2FAButton(userId: number, enable2faBtn: HTMLButtonElement, qrContainer: HTMLDivElement) {
 	const userDetailsRes = await fetch(`https://${location.host}/api/users?id=${userId}`);
 	const userDetailsArr = await userDetailsRes.json();
 	const userDetails = Array.isArray(userDetailsArr) ? userDetailsArr[0] : null;
 	const mfaEnabled = userDetails?.mfa_enabled === 1;
 
 	// Remove previous click listeners
-	const newBtn = enable2faBtn.cloneNode(true) as HTMLButtonElement;
-	enable2faBtn.parentNode?.replaceChild(newBtn, enable2faBtn);
+	enable2faBtn.onclick = null;
+	const btn = enable2faBtn;
 
 	if (mfaEnabled) {
-		newBtn.textContent = "Disable 2FA";
-		newBtn.classList.remove("bg-teal-400");
-		newBtn.classList.add("bg-red-500");
-		newBtn.onclick = async () => {
+		btn.textContent = "Disable 2FA";
+		btn.classList.remove("bg-teal-400");
+		btn.classList.add("bg-red-500");
+		btn.onclick = async () => {
 			const code = prompt("Enter your current 2FA code to disable:");
 			if (!code) return;
-			newBtn.disabled = true;
-			newBtn.textContent = "Disabling...";
+			btn.disabled = true;
+			btn.textContent = "Disabling...";
 			try {
 				const res = await fetch(`https://${location.host}/api/disable-2fa`, {
 					method: "POST",
@@ -33,22 +33,22 @@ async function update2FAButton(userId: number, enable2faBtn: HTMLButtonElement, 
 				});
 				if (res.ok) {
 					alert("2FA disabled.");
-					await update2FAButton(userId, newBtn, qrContainer);
+					await update2FAButton(userId, btn, qrContainer);
 				} else {
 					alert("Invalid code or error disabling 2FA.");
-					newBtn.textContent = "Disable 2FA";
+					btn.textContent = "Disable 2FA";
 				}
 			} finally {
-				newBtn.disabled = false;
+				btn.disabled = false;
 			}
 		};
 	} else {
-		newBtn.textContent = "Enable 2FA";
-		newBtn.classList.remove("bg-red-500");
-		newBtn.classList.add("bg-teal-400");
-		newBtn.onclick = async () => {
-			newBtn.disabled = true;
-			newBtn.textContent = "Loading...";
+		btn.textContent = "Enable 2FA";
+		btn.classList.remove("bg-red-500");
+		btn.classList.add("bg-teal-400");
+		btn.onclick = async () => {
+			btn.disabled = true;
+			btn.textContent = "Loading...";
 			qrContainer.innerHTML = "";
 			try {
 				const res = await fetch(`https://${location.host}/api/2fa-setup?userId=${userId}`);
@@ -57,15 +57,15 @@ async function update2FAButton(userId: number, enable2faBtn: HTMLButtonElement, 
 					qrContainer.innerHTML = `<div class="text-white mb-2">
 						Scan this QR code with your Authenticator app:
 						</div><img src="${qr}" alt="2FA QR" style="max-width:220px;">`;
-					await update2FAButton(userId, newBtn, qrContainer); // Update after enabling
+					await update2FAButton(userId, btn, qrContainer); // Update after enabling
 				} else {
 					qrContainer.innerHTML = `<div class="text-red-400">Failed to load QR code.</div>`;
 				}
 			} catch {
 				qrContainer.innerHTML = `<div class="text-red-400">Error loading QR code.</div>`;
 			}
-			newBtn.disabled = false;
-			newBtn.textContent = "Enable 2FA";
+			btn.disabled = false;
+			btn.textContent = "Enable 2FA";
 		};
 	}
 }

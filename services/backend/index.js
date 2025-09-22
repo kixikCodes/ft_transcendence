@@ -41,7 +41,7 @@ initDb(db);
 
 fastify.get("/api/users", async (request, reply) => {
   let params = [];
-  const fields = "id, username, wins, losses, level, created_at, status, friends, blocks, mfa_enabled";
+  const fields = "id, username, wins, losses, level, created_at, status, mfa_enabled";
   let sql = `SELECT ${fields} FROM users`;
   if (request.query.id) {
     sql += " WHERE id = ?";
