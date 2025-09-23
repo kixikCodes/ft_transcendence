@@ -2,72 +2,60 @@ import { ws } from "../services/ws.js";
 import type { ServerState } from "../interfaces/GameInterfaces.js";
 import { GameManager } from "../managers/GameManager.js";
 import { Settings } from "../game/GameSettings.js";
+import { navigate } from "../router/router.js";
 
 export const TournamentController = async (root: HTMLElement) => {
+  // Initialize settings and game
   const settings = new Settings();
   const game = new GameManager(settings);
 
+  // Get current user
   const user = await fetch(`https://${location.host}/api/me`, {
     method: "GET",
     credentials: "include",
-  }).then((r) => r.json());
+  }).then(r => r.json());
 
   if (!user?.id) {
     console.error("User not authenticated");
     return () => {};
   }
+  const userId = user.id;
 
-  // 👉 Immediately join a tournament
-  try {
-    const res = await fetch(`http://${location.hostname}:3000/tournaments/join`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ player: { id: user.id, username: user.username } }),
-        });
-    if (res.ok) {
-      const tournament = await res.json();
-      console.log("Joined tournament:", tournament);
-
-      const statusEl = root.querySelector<HTMLDivElement>("#tournamentStatus");
-      if (statusEl) {
-        statusEl.textContent = `Tournament ${tournament.id} — ${tournament.status}`;
-      }
-    } else {
-      console.error("Failed to join tournament", await res.text());
-    }
-  } catch (err) {
-    console.error("Error joining tournament", err);
+  // Connect websocket
+  ws.connect(userId);
+  if (ws && ws.userId) {
+    ws.send({ type: "joinTournament", userId: ws.userId });
   }
 
-  // Setup websocket + game like before
-  ws.connect(user.id);
-
-    // Listen for tournament updates
-    ws.on("tournamentUpdate", (msg: { type: "tournamentUpdate"; state: any }) => {
-    console.log("Tournament update:", msg.state);
-
-    const statusEl = root.querySelector<HTMLDivElement>("#tournamentStatus");
-    if (statusEl) {
-        statusEl.textContent =
-        `Tournament ${msg.state.id} — ${msg.state.status} — Round ${msg.state.round}`;
-    }
-
-    // Example: show players list dynamically
-    const playersEl = root.querySelector<HTMLUListElement>("#tournamentPlayers");
-    if (playersEl) {
-        playersEl.innerHTML = "";
-        msg.state.players.forEach((p: any) => {
-        const li = document.createElement("li");
-        li.textContent = `${p.username} (${p.ready ? "ready" : "waiting"})`;
-        playersEl.appendChild(li);
-        });
-    }
-    });
-
+  // Ensure inputs are sent remotely
   game.getInputHandler().bindRemoteSender((dir) => {
     if (game.getInputHandler().isInputRemote() && ws) {
-      ws.send({ type: "input", direction: dir, userId: user.id });
+      ws.send({ type: "input", direction: dir });
+    }
+  });
+
+  // --- DOM elements ---
+  const startBtn = root.querySelector<HTMLButtonElement>("#startBtn");
+  const leaveBtn = root.querySelector<HTMLButtonElement>("#leaveTournament");
+  const statusEl = root.querySelector<HTMLDivElement>("#tournamentStatus");
+
+  // --- WS event listeners ---
+  ws.on("join", (msg) => {
+    console.log("Tournament join:", msg);
+
+    game.setConfig(msg.gameConfig);
+    game.applyServerState(msg.state);
+
+    // Make sure inputs are sent remotely
+    game.getInputHandler().setRemote(true);
+    settings.setOpponent("REMOTE");
+  });
+
+  ws.on("tournamentUpdate", (msg: { type: "tournamentUpdate"; state: any }) => {
+    console.log("Tournament update:", msg.state);
+
+    if (statusEl) {
+      statusEl.textContent = `Tournament ${msg.state.id} — ${msg.state.status} — Round ${msg.state.round}`;
     }
   });
 
@@ -75,7 +63,35 @@ export const TournamentController = async (root: HTMLElement) => {
     game.applyServerState(m.state);
   });
 
+  ws.on("tournamentEliminated", () => {
+    alert("You have been eliminated from the tournament!");
+    navigate("/");
+  });
+
+  // --- Button actions ---
+  startBtn?.addEventListener("click", () => {
+    if (ws) ws.send({ type: "ready", userId });
+  });
+
+  leaveBtn?.addEventListener("click", () => {
+    if (ws) ws.send({ type: "leave", userId });
+    navigate("/");
+  });
+
+  // --- Cleanup ---
   return () => {
-    // cleanup later
+    onLeave();
+    ws.close();
+
+    startBtn?.removeEventListener("click", () => {});
+    leaveBtn?.removeEventListener("click", () => {});
   };
+
+  function onLeave() {
+    try {
+      ws.send({ type: "leave", userId });
+    } catch {
+      ws.close();
+    }
+  }
 };

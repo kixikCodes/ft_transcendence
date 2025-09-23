@@ -19,7 +19,7 @@ class WSClient {
   private queue: string[] = [];
   private listeners: Map<string, Set<(m: any) => void>> = new Map();
   private connected = false;
-  private userId?: number;
+  public userId?: number;
   private reconnectTimeout?: ReturnType<typeof setTimeout>;
   private heartbeatInterval?: ReturnType<typeof setInterval>;
 

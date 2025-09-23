@@ -1,6 +1,6 @@
 export function broadcaster(clients, ws, msg)
 {
-  console.log("Broadcasting message to all clients: ", msg);
+  //console.log("Broadcasting message to all clients: ", msg);
   
   for (const client of clients)
   {

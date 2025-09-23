@@ -29,6 +29,10 @@ export const HomeController = async (root: HTMLElement) => {
 	const tournamentBnt = root.querySelector<HTMLButtonElement>(".tournament_play");
 	if (tournamentBnt) {
 		tournamentBnt.addEventListener('click', () => {
+			// Send WS message to join a tournament
+			if (ws && ws.userId) {
+			ws.send({ type: "joinTournament", userId: ws.userId });
+			}
 			navigate("/tournament");
 		});
 	}

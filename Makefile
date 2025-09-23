@@ -20,7 +20,7 @@ down:
 prune: down
 	@echo "Nuking all Services..."
 	docker system prune -af --volumes
-	rm -rf ./services/backend/data/database.sqlite
+# rm -rf ./services/backend/data/database.sqlite
 
 re: down up
 

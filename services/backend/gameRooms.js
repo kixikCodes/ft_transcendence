@@ -67,28 +67,24 @@ export class Room {
 
 
   addPlayer(userId, ws) {
-    // If this player is already in the room, do nothing
     const side = this.players.size % 2 === 0 ? "left" : "right";
 
-    // Avoid using null/undefined as Map keys — create a lightweight placeholder socket object
+    // Use placeholder if ws is null
     let sock = ws;
     if (!sock) {
-      sock = {
-        // marker so other code can detect placeholder sockets
-        _isPlaceholder: true,
-        // mimic websocket readyState closed
-        readyState: 3,
-        // no-op send/close to be safe
-        send: () => {},
-        close: () => {},
-      };
+      sock = { _isPlaceholder: true, readyState: 3, send: () => {}, close: () => {} };
     }
 
-    this.players.set(sock, { id: userId, side: side, ready: false, userId });
-    console.log(`User ${userId} added to room ${this.id}`);
-    // attach room metadata to the socket placeholder/real socket
-    try { sock._roomId = this.id; } catch {}
-    try { sock._side = side; } catch {}
+    // Store the player in the room
+    this.players.set(sock, { id: userId, side, ready: false, userId });
+
+    // Assign metadata on the real WS so the loop sees it
+    if (ws) {
+      ws._roomId = this.id;
+      ws._side = side;
+    }
+
+    console.log(`User ${userId} added to room ${this.id} as ${side}`);
   }
 
   removePlayer(ws) {

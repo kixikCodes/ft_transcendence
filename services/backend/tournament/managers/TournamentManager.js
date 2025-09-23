@@ -26,11 +26,12 @@ export class TournamentManager {
       throw new Error("Tournament is already full");
     }
 
+
     this.tournament.players.push({ ...player, ws });
+    this.broadcastTournament();
     if (this.tournament.players.length === this.tournament.size) {
       this.startTournament();
     }
-    this.broadcastTournament();
   }
 
   startTournament() {
