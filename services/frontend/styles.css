@@ -1,7 +1,9 @@
 @import "tailwindcss";
 
 /* Button Styling */
-#startBtn {
+#startBtn,
+#leaveBtn,
+#joinBtn {
 	padding: 12px 24px;
 	font-size: 18px;
 	background-color: #b8f2e6;
@@ -13,7 +15,9 @@
 	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
-#startBtn:hover {
+#startBtn:hover,
+#leaveBtn:hover,
+#joinBtn:hover {
 	background-color: #fcbad3;
 	color: #333;
 	transform: scale(1.05);

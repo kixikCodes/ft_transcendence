@@ -8,6 +8,7 @@ export const TournamentController = async (root: HTMLElement) => {
   // Initialize settings and game
   const settings = new Settings();
   const game = new GameManager(settings);
+  let   joined = false;
 
   // Get current user
   const user = await fetch(`https://${location.host}/api/me`, {
@@ -23,9 +24,6 @@ export const TournamentController = async (root: HTMLElement) => {
 
   // Connect websocket
   ws.connect(userId);
-  if (ws && ws.userId) {
-    ws.send({ type: "joinTournament", userId: ws.userId });
-  }
 
   // Ensure inputs are sent remotely
   game.getInputHandler().bindRemoteSender((dir) => {
@@ -36,7 +34,7 @@ export const TournamentController = async (root: HTMLElement) => {
 
   // --- DOM elements ---
   const startBtn = root.querySelector<HTMLButtonElement>("#startBtn");
-  const leaveBtn = root.querySelector<HTMLButtonElement>("#leaveTournament");
+  const leaveBtn = root.querySelector<HTMLButtonElement>("#leaveBtn");
   const statusEl = root.querySelector<HTMLDivElement>("#tournamentStatus");
 
   // --- WS event listeners ---
@@ -68,13 +66,24 @@ export const TournamentController = async (root: HTMLElement) => {
     navigate("/");
   });
 
+  ws.on("tournamentComplete", () => {
+    alert("You are the winner of this tournament! Well done!");
+    navigate("/");
+  });
+
   // --- Button actions ---
   startBtn?.addEventListener("click", () => {
-    if (ws) ws.send({ type: "ready", userId });
+    if (ws && ws.userId) {
+      ws.send({ type: "joinTournament", userId: ws.userId });
+      ws.send({ type: "ready", userId });
+    }
   });
 
   leaveBtn?.addEventListener("click", () => {
-    if (ws) ws.send({ type: "leave", userId });
+    if (ws) {
+      ws.send({ type: "leave", userId });
+      ws.close();
+    }
     navigate("/");
   });
 

@@ -126,25 +126,67 @@ const clients = new Set();
     clients.add(ws);
 
 	// When a client disconnects, remove it from the clients set
-	ws.on("close", () => {
+  ws.on("close", () => {
     console.log("Client disconnected in backend");
     clients.delete(ws);
 
+    // 1) If this socket belongs to a room, remove from room as before
     const index = rooms.findIndex(room => room.id === ws._roomId);
     const room = rooms[index];
-    if (!room || !room.players.has(ws)) return;
+    if (room && room.players.has(ws)) {
+      room.removePlayer(ws);
 
-    // Remove disconnected player
-    room.removePlayer(ws);
+      // If this room is part of a tournament, let TournamentManager handle awarding win / cleanup
+      if (room.tournamentManager && room.matchId !== undefined) {
+        // After room.removePlayer(ws) the room players set has been updated.
+        if (room.players.size === 1) {
+          const remainingPlayer = [...room.players.values()][0];
+          // delegate to manager to record match result
+          room.tournamentManager.recordMatchResult(room.matchId, remainingPlayer.id);
+        }
+      }
 
-    // If tournament and only one player remains, award win
-    if (room.tournamentManager && room.matchId !== undefined && room.players.size === 1) {
-      const remainingPlayer = [...room.players.values()][0];
-      room.tournamentManager.recordMatchResult(room.matchId, remainingPlayer.id, "opponentLeft");
+      if (room.players.size === 0) rooms.splice(index, 1);
     }
 
-    // Clean up room if empty
-    if (room.players.size === 0) rooms.splice(index, 1);
+    // 2) If no room or before tournament started, try to find any tournament that contains this socket
+    // Fast path: if ws._tournamentId is set
+    if (ws._tournamentId && tournaments[ws._tournamentId]) {
+      try {
+        tournaments[ws._tournamentId].removePlayerBySocket(ws);
+      } catch (err) {
+        console.warn("Error removing player by socket (fast path):", err?.message || err);
+      }
+      return;
+    }
+
+    // Fallback: scan all tournaments for this socket (rare)
+    for (const id of Object.keys(tournaments)) {
+      const mgr = tournaments[id];
+      if (!mgr) continue;
+
+      // player in players list?
+      const found = mgr.getTournament().players.find(p => p.ws === ws);
+      if (found) {
+        mgr.removePlayer(found.id);
+        break;
+      }
+
+      // waiting area?
+      const foundW = mgr.getTournament().waitingArea.find(p => p.ws === ws);
+      if (foundW) {
+        mgr.removePlayer(foundW.id);
+        break;
+      }
+
+      // matches?
+      const foundM = mgr.getTournament().matches.find(m => (m.p1 && m.p1.ws === ws) || (m.p2 && m.p2.ws === ws));
+      if (foundM) {
+        const idToRemove = (foundM.p1 && foundM.p1.ws === ws) ? foundM.p1.id : foundM.p2.id;
+        mgr.removePlayer(idToRemove);
+        break;
+      }
+    }
   });
 
 
@@ -177,18 +219,34 @@ const clients = new Set();
 
     } else if (type === "leave") {
       const { userId } = parsed;
+
+      // leave from current room (if any)
       const index = rooms.findIndex(room => room.id === ws._roomId);
       const room = rooms[index];
       ws._roomId = null;
-      if (!room || !room.players.has(ws)) return;
-      room.removePlayer(ws);
-      broadcaster(room.players.keys(), ws, JSON.stringify({ type: "chat", userId, content: `User ${userId} left room` }));
-      try { ws.send(JSON.stringify({ type: "tournamentEliminated" })); ws.close(); } catch {}
-      if (room.tournamentManager && room.matchId !== undefined && room.players.size === 1) {
-        const remainingPlayer = [...room.players.values()][0];
-        room.tournamentManager.recordMatchResult(room.matchId, remainingPlayer.id, "opponentLeft");
+      if (room && room.players.has(ws)) {
+        room.removePlayer(ws);
       }
-      if (room.players.size === 0) rooms.splice(index, 1);
+
+      // find tournament manager that contains this user and remove player
+      for (const id of Object.keys(tournaments)) {
+        const mgr = tournaments[id];
+        if (!mgr) continue;
+        const t = mgr.getTournament();
+
+        const inPlayers = t.players.some(p => p.id === userId);
+        const inWaiting = t.waitingArea.some(p => p.id === userId);
+        const inMatches = t.matches.some(m => (m.p1?.id === userId) || (m.p2?.id === userId));
+
+        if (inPlayers || inWaiting || inMatches) {
+          mgr.removePlayer(userId);
+          break;
+        }
+      }
+
+      broadcaster(room ? room.players.keys() : clients, ws, JSON.stringify({ type: "chat", userId, content: `User ${userId} left room` }));
+      try { ws.send(JSON.stringify({ type: "tournamentEliminated" })); ws.close(); } catch {}
+      if (room && room.players.size === 0) rooms.splice(index, 1);
     } else if (type === "ready") {
       const { userId } = parsed;
       const index = rooms.findIndex(room => room.id === ws._roomId);
