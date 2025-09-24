@@ -14,7 +14,6 @@ export function initDb(db) {
 			losses INTEGER DEFAULT 0,
 			level INTEGER DEFAULT 1,
 			status TEXT DEFAULT 'ok',
-			"2fa_enabled" TEXT DEFAULT 'false',
 			mfa_enabled BOOL DEFAULT 0,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 			)

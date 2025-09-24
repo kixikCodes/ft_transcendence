@@ -2,7 +2,7 @@ import { navigate } from "../router/router.js";
 type ApiUser = { id: number; username?: string; email?: string };
 
 export class UserManager {
-	private currentUser: ApiUser | null = null; // Not user right now but good to have.
+	private currentUser: ApiUser | null = null; // Not used right now but good to have.
 
 	async register(username: string, email: string, password: string): Promise<{ id: number, username: string, email: string } | null> {
 		const res = await fetch(`https://${location.host}/api/register`, {
@@ -33,7 +33,7 @@ export class UserManager {
 	}
 
 	async verify2FA(code: string, tempToken: string): Promise<boolean> {
-		const res = await fetch(`/api/verify-2fa`, {
+		const res = await fetch(`https://${location.host}/api/verify-2fa`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ code, tempToken }),
@@ -89,6 +89,7 @@ class Login {
 		   });
 		});
 
+
 		// Login flow
 		loginForm.addEventListener('submit', async (event) => {
 			event.preventDefault();
@@ -106,49 +107,21 @@ class Login {
 					loginError.textContent = 'Invalid username or password.';
 					return;
 				}
-
-				// // Extract the user ID from the tempToken
-				// const userId = JSON.parse(atob(result.tempTok.split('.')[1])).sub;
-
-				// // Get the 2fa_enabled status from the server:
-				// const isEnabledResponse = await fetch(`/api/users/${userId}`, { credentials: "include" });
-				// if (!isEnabledResponse.ok) {
-				// 	loginError.textContent = "Failed to get user info.";
-				// 	return;
-				// }
-				// const userData = await isEnabledResponse.json();
-				// console.log("User data response:", userData);
-				// if (!userData || !userData.id) {
-				// 	loginError.textContent = "Invalid user data.";
-				// 	return;
-				// }
-
-				// // If the user does not have 2FA enabled, log them in directly
-				// const enabled = userData["2fa_enabled"];
-				if (!result.mfa) {
-					console.log("2FA not enabled, logging in directly.");
-					// // We must still call verify2FA because it needs to create the session cookie
-					// const ok = await this.userManager.verify2FA("000000", result.tempTok);
-					// if (ok) {
-					alert("Login successful (with 2FA)!");
-					navigate("/");
-					// }
-					return;
-				}
-
-				// If the user has 2FA enabled, prompt for the code
-				const code = prompt("Enter your 2FA code:");
-				if (!code) {
-					loginError.textContent = "2FA code required.";
-					return;
-				}
-
-				const ok = await this.userManager.verify2FA(code, result.tempTok);
-				if (ok) {
-					alert("Login successful (with 2FA)!");
-					navigate("/");
-				} else {
-					loginError.textContent = "Invalid 2FA code.";
+				
+				if (!result.mfa)
+					navigate("/"); // Just log them in and take them to home page.
+				else // If 2FA step is required, continue with it
+				{
+					const code = prompt("Enter your 2FA code:");
+					if (!code) {
+						loginError.textContent = "2FA code required.";
+						return;
+					}
+					const ok = await this.userManager.verify2FA(code, result.tempTok);
+					if (ok)
+						navigate("/");
+					else
+						loginError.textContent = "Invalid 2FA code.";
 				}
 			} catch (err) {
 				console.error(err);

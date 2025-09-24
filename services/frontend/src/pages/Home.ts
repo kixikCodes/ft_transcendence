@@ -548,7 +548,6 @@ export const HomeController = async (root: HTMLElement) => {
   const myLossesEl = root.querySelector<HTMLSpanElement>("#my-losses")!;
   const myWinrateEl = root.querySelector<HTMLSpanElement>("#my-winrate")!;
   const friendsListEl = root.querySelector<HTMLUListElement>("#friends-list")!;
-  const logoutBtn = root.querySelector<HTMLButtonElement>("#logout-btn")!;
   const notifyArea = root.querySelector<HTMLElement>(".notifications");
   const userDashBtn = root.querySelector<HTMLButtonElement>("#user-dashboard-btn");
 
@@ -628,20 +627,13 @@ export const HomeController = async (root: HTMLElement) => {
   // Event listener for the notify area. When clicking => open requests modal
   notifyArea?.addEventListener("click", openRequestsModal);
 
-  // Event listener for the logout button
-  logoutBtn.addEventListener("click", async () => {
-    try {
-      await fetch("/api/logout", { method: "POST" });
-      navigate("/login");
-    } catch {}
-  });
-
   // Event listener for the dashboard button
   userDashBtn?.addEventListener("click", () => {
     navigate("/dashboard");
   });
 
   // Settings modal logic
+	const userId = (await fetch(`https://${location.host}/api/me`, { method: "GET" }).then(r => r.json())).id;
 	const settingsBtn = root.querySelector<HTMLButtonElement>("#settingsBtn");
 	const settingsModal = root.querySelector<HTMLDivElement>("#settingsModal");
 	const closeSettingsBtn = root.querySelector<HTMLButtonElement>("#closeSettingsBtn");
@@ -669,8 +661,10 @@ export const HomeController = async (root: HTMLElement) => {
 		});
 
 		logoutBtn.addEventListener("click", async () => {
-			await fetch(`https://${location.host}/api/logout`, { method: "POST" });
-			navigate("/login");
+			try {
+				await fetch("/api/logout", { method: "POST" });
+				navigate("/login");
+			} catch {}
 		});
 
 		deleteAccountBtn.addEventListener("click", () => {
@@ -730,30 +724,19 @@ export const HomeController = async (root: HTMLElement) => {
     ws.close();
 
     notifyArea?.removeEventListener("click", openRequestsModal);
-    logoutBtn.removeEventListener("click", () => {});
+    logoutBtn?.removeEventListener("click", () => {});
     userDashBtn?.removeEventListener("click", () => {});
 
     // Settings modal
-		if (settingsBtn)
-			settingsBtn.removeEventListener("click", () => {});
-		if (closeSettingsBtn)
-			closeSettingsBtn.removeEventListener("click", () => {});
-		if (enable2faBtn)
-			enable2faBtn.removeEventListener("click", () => {});
-		if (logoutBtn)
-			logoutBtn.removeEventListener("click", () => {});
-		if (deleteAccountBtn)
-			deleteAccountBtn.removeEventListener("click", () => {});
+	if (settingsBtn)
+		settingsBtn.removeEventListener("click", () => {});
+	if (closeSettingsBtn)
+		closeSettingsBtn.removeEventListener("click", () => {});
+	if (enable2faBtn)
+		enable2faBtn.removeEventListener("click", () => {});
+	if (logoutBtn)
+		logoutBtn.removeEventListener("click", () => {});
+	if (deleteAccountBtn)
+		deleteAccountBtn.removeEventListener("click", () => {});
 	};
 };
-
-/*
-Implemented chat functionality with friends
-
-- Created a chat modal in Home.html. Styled it with tailwind classes.
-- Subsribed to 'chat' messages from server inside HomeController to setup the EventListener, when the user must update its chat history.
-- The chat opens, when the user clicks the chat button beside a friend in the sidebar. Then the currentChat global is set to this friend object.
-- Implemented applyChatMsg, which appends chat messages in the chat history in the chat modal.
-- Wether the user sent a message or received one, the message is aligned left/right and colored grey/green.
-- Setup EventListeners for the chat modal (open/close/send message)
-*/
