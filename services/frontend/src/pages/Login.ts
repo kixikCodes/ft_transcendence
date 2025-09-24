@@ -2,7 +2,7 @@ import { navigate } from "../router/router.js";
 type ApiUser = { id: number; username?: string; email?: string };
 
 export class UserManager {
-	private currentUser: ApiUser | null = null;
+	private currentUser: ApiUser | null = null; // Not user right now but good to have.
 
 	async register(username: string, email: string, password: string): Promise<{ id: number, username: string, email: string } | null> {
 		const res = await fetch(`https://${location.host}/api/register`, {
@@ -56,10 +56,6 @@ export class UserManager {
 		const user = await res.json();
 		this.currentUser = user;
 		return user;
-	}
-
-	getUser() {
-		return this.currentUser;
 	}
 
 	async logout() {

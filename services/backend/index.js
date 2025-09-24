@@ -42,7 +42,49 @@ await fastify.register(fastifyCookie);
 // Call the initDb function to create the tables by the time the server starts
 initDb(db);
 
-await fastify.register( fastifyRoutes, { db } );
+fastify.get("/api/users", async (request, reply) => {
+  let params = [];
+  const fields = "id, username, wins, losses, level, created_at, status, mfa_enabled";
+  let sql = `SELECT ${fields} FROM users`;
+  if (request.query.id) {
+    sql += " WHERE id = ?";
+    params.push(request.query.id);
+  }
+  sql += " ORDER BY created_at DESC";
+  try {
+    const rows = await fetchAll(db, sql, params);
+    reply.send(rows);
+  } catch (err) {
+    reply.code(500).send({ error: err.message });
+  }
+});
+
+// This will send a friend request to another user
+fastify.post("/api/users/:id/sendFriendRequest", async (request, reply) => {
+  // Extract userId from the URL parameters
+  const userId = parseInt(request.params.id);
+  // Extract friendId from the request body
+  const {friendId} = request.body;
+  if (!friendId || !userId) {
+    return reply.code(400).send({ error: "Invalid user ID or friend ID" });
+  }
+  
+});
+
+fastify.post("/api/users/:id/unfriend", async (request, reply) => {
+  const userId = parseInt(request.params.id);
+  const {friendId} = request.body;
+  if (!friendId || !userId) {
+    return reply.code(400).send({ error: "Invalid user ID or friend ID" });
+  }
+  console.log("Unfriending user: ", friendId, "for user: ", userId);
+  try {
+    await removeElementFromTable(db, "friends", userId, friendId);
+    reply.send({ success: true });
+  } catch (err) {
+    reply.code(500).send({ error: err.message });
+  }
+});
 
 // WebSocket map of clientIds to websockets
 const clients = new Map();
@@ -190,8 +232,7 @@ fastify.post("/api/register", (request, reply) => {
 	const salt = bcrypt.genSaltSync(15); // Salt Password
 	const hash = bcrypt.hashSync(password, salt); // Hash salted Password
 	const secret = authenticator.generateSecret(); // Create unique key for authenticator app (2FA)
-	db.run(
-		"INSERT INTO users (username, email, password_hash, totp_secret) VALUES (?, ?, ?, ?)",
+	db.run("INSERT INTO users (username, email, password_hash, totp_secret) VALUES (?, ?, ?, ?)",
 		[username, email, hash, secret],
 		function (err) {
 			if (err) {
@@ -213,8 +254,7 @@ fastify.post("/api/login", (request, reply) => {
 	if (!username || !password)
 		return reply.code(400).send({ error: "Missing fields" });
 
-	db.get(
-		"SELECT * FROM users WHERE username = ?",
+	db.get("SELECT * FROM users WHERE username = ?",
 		[username],
 		(err, user) => {
 			if (err)
@@ -267,8 +307,7 @@ fastify.post("/api/verify-2fa", (request, reply) => {
 	} catch (e) {
 		return reply.code(401).send({ error: "Invalid or expired token" });
 	}
-	db.get(
-		"SELECT * FROM users WHERE id = ?",
+	db.get("SELECT * FROM users WHERE id = ?",
 		[payload.sub],
 		(err, user) => {
 			if (err)
@@ -305,8 +344,7 @@ fastify.post("/api/verify-2fa", (request, reply) => {
 
 fastify.get("/api/2fa-setup", (req, reply) => {
 	const userId = req.query.userId;
-	db.get(
-		"SELECT * FROM users WHERE id = ?",
+	db.get("SELECT * FROM users WHERE id = ?",
 		[userId],
 		async (err, user) => {
 			if (err)
@@ -324,6 +362,28 @@ fastify.get("/api/2fa-setup", (req, reply) => {
 			reply.send({ qr });
 		}
 	);
+});
+
+fastify.post("/api/disable-2fa", async (request, reply) => {
+	const { userId, code } = request.body;
+	if (!userId || !code)
+		return reply.code(400).send({ error: "Missing fields" });
+
+	db.get("SELECT * FROM users WHERE id = ?", [userId], (err, user) => {
+		if (err) return reply.code(500).send({ error: err.message });
+		if (!user) return reply.code(400).send({ error: "User not found" });
+
+		if (!user.mfa_enabled)
+			return reply.code(400).send({ error: "2FA not enabled" });
+
+		if (!authenticator.check(code, user.totp_secret))
+			return reply.code(400).send({ error: "Invalid 2FA code" });
+
+		db.run("UPDATE users SET mfa_enabled = 0 WHERE id = ?", [userId], function (err) {
+			if (err) return reply.code(500).send({ error: err.message });
+			reply.send({ success: true });
+		});
+	});
 });
 
 fastify.get("/api/me", (request, reply) => {
@@ -346,6 +406,32 @@ fastify.get("/api/me", (request, reply) => {
 fastify.post("/api/logout", (reply) => {
 	reply.clearCookie("auth", { path: "/" });
 	reply.send({ ok: true });
+});
+
+fastify.post("/api/delete-account", (request, reply) => {
+	const { userId, password } = request.body;
+	
+	db.get("SELECT * FROM users WHERE id = ?",
+		[userId],
+		(err, user) => {
+			if (err)
+				return reply.code(500).send({ error: err.message });
+			if (!user)
+				return reply.code(400).send({ error: "Invalid credentials" });
+			const isValid = bcrypt.compareSync(password, user.password_hash);
+			if (!isValid)
+				return reply.code(400).send({ error: "Invalid credentials" });
+		}
+	);
+
+	db.run("DELETE FROM users WHERE id = ?",
+		[userId],
+		function (err) {
+			if (err) return reply.code(500).send({ error: err.message });
+			reply.clearCookie("auth", { path: "/" });
+			reply.send({ success: true });
+		}
+	);
 });
 
 export function startLoop(room) {
