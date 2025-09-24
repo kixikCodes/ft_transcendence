@@ -1,146 +1,95 @@
 @import "tailwindcss";
 
-/* Button Styling */
-#startBtn {
-	padding: 12px 24px;
-	font-size: 18px;
-	background-color: #b8f2e6;
-	color: #5a5a5a;
-	border: none;
-	border-radius: 8px;
-	cursor: pointer;
-	transition: background-color 0.3s ease, transform 0.2s ease;
-	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-}
-
-#startBtn:hover {
-	background-color: #fcbad3;
-	color: #333;
-	transform: scale(1.05);
-}
-
-/* Optional Score Section (if needed) */
-/* #Scores {
-	margin-bottom: 20px;
-	font-family: 'Arial Rounded MT Bold', sans-serif;
-	font-size: 20px;
-	color: #4a4a4a;
-} */
-
-#chat {
-	display: none;
-	max-width: 640px;
-}
-
-#log {
-	width: 100%;
-}
-/* 
-form {
-	margin: 1rem 0;
-} */
-
-
-/* OLD RAW CSS (HOME PAGE) */
-
 body {
   font-size: 1.5rem;
   color: #eee;
   font-family: "Quantico", sans-serif;
 
-  background: linear-gradient(180deg, #111 0%, #111 40%, #ad2648 100%);
+  /* background: linear-gradient(180deg, #111 0%, #111 40%, #ad2648 100%);
   background-size: 400% 400%;
-  animation: gradientShift 12s ease infinite;
+  animation: gradientShift 12s ease infinite; */
 
   border: 2px solid #ccc;
   min-height: 100vh;
   box-sizing: border-box;
 }
 
-@keyframes gradientShift {
+/* @keyframes gradientShift {
   0% { background-position: 50% 0%; }
   50% { background-position: 50% 100%; }
   100% { background-position: 50% 0%; }
+} */
+
+.grid-top {
+	margin: 0 auto;
+	position: fixed;
+	top: 0;
+	left: -50%;
+	background-color: rgba(20 30 40 0.4);
+	background-image: 
+		linear-gradient(90deg, transparent 0%, transparent 85%, #ad2648 90%, transparent 95%), 
+		linear-gradient(0deg, transparent 0%, transparent 85%, #ad2648 90%, transparent 95%);
+	background-size: 30px 15px;
+	width: 200vw;
+	height: 60vh;
+	transform: translate3D(0, 0, 0) perspective(150px) rotateX(-45deg);
+	perspective-origin: bottom;
+
+	animation-name: movement-top;
+	animation-duration: 20s;
+	animation-iteration-count: infinite;
+	animation-timing-function: linear;
+	z-index: -1;
 }
 
-/* Auth page specific styles — append to your main CSS 
-.auth-container {
-  width: 100%;
-  max-width: 980px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 24px;
-  align-items: start;
-  box-sizing: border-box;
-  padding: 20px;
+.grid-top:after {
+	content: "";
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: linear-gradient(to bottom, transparent, var(--color-gray-900));
 }
 
-@media (min-width: 900px) {
-  .auth-container {
-    grid-template-columns: 1fr 1fr;
-  }
+.grid-bottom {
+	margin: 0 auto;
+	position: fixed;
+	bottom: 0;
+	left: -50%;
+	background-color: rgba(20 30 40 0.4);
+	background-image:
+		linear-gradient(90deg, transparent 0%, transparent 85%, #ad2648 90%, transparent 95%),
+		linear-gradient(0deg, transparent 0%, transparent 85%, #ad2648 90%, transparent 95%);
+	background-size: 30px 15px;
+	width: 200vw;
+	height: 60vh;
+	transform: translate3D(0, 0, 0) perspective(150px) rotateX(45deg) ;
+	perspective-origin: top;
+
+	animation-name: movement-bottom;
+	animation-duration: 20s;
+	animation-iteration-count: infinite;
+	animation-timing-function: linear;
+	z-index: -1;
 }
 
-.auth-card {
-  background-color: #2a2a2a;
-  border: 2px solid #ccc;
-  padding: 28px;
-  border-radius: 8px;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-height: 280px;
+.grid-bottom:after {
+	content: "";
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: linear-gradient(to top, transparent, var(--color-gray-900));
 }
 
-.auth-title {
-  font-size: 3rem;
-  margin: 0 0 6px 0;
-  color: #3fbf7f;
-  letter-spacing: 0.5px;
+@keyframes movement-bottom {
+	0% { background-position: 0% 0%; }
+	100% { background-position: 0% 100%; }
 }
 
-.auth-form input {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 10px 12px;
-  margin: 8px 0;
-  font-family: "Quantico", sans-serif;
-  font-size: 2rem;
-  background: #333;
-  color: #eee;
-  border: 2px solid #ccc;
-  border-radius: 6px;
-  outline: none;
-  transition: 0.14s;
+@keyframes movement-top {
+	0% { background-position: 0% 100%; }
+	100% { background-position: 0% 0%; }
 }
-
-.auth-form input:focus {
-  box-shadow: 0 0 0 4px rgba(63,191,127,0.08);
-  border-color: #3fbf7f;
-}
-
-.auth-submit {
-  font-size: 2rem;
-  padding: 8px 22px;
-  margin-top: 8px;
-}
-
-.form-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.auth-error {
-  color: #f66;
-  font-size: 1.6rem;
-  min-height: 2.2rem;
-  margin-top: 6px;
-}
-
-.auth-form input::placeholder {
-  color: #aaa;
-}
-*/
