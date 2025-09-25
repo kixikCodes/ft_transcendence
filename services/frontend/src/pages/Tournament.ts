@@ -35,6 +35,7 @@ export const TournamentController = async (root: HTMLElement) => {
   // --- DOM elements ---
   const startBtn = root.querySelector<HTMLButtonElement>("#startBtn");
   const leaveBtn = root.querySelector<HTMLButtonElement>("#leaveBtn");
+  const joinBtn = root.querySelector<HTMLButtonElement>("#joinBtn");
   const statusEl = root.querySelector<HTMLDivElement>("#tournamentStatus");
 
   // --- WS event listeners ---
@@ -72,11 +73,14 @@ export const TournamentController = async (root: HTMLElement) => {
   });
 
   // --- Button actions ---
-  startBtn?.addEventListener("click", () => {
-    if (ws && ws.userId) {
+  joinBtn?.addEventListener("click", () => {
+    if (ws && ws.userId)
       ws.send({ type: "joinTournament", userId: ws.userId });
+  });
+
+  startBtn?.addEventListener("click", () => {
+    if (ws)
       ws.send({ type: "ready", userId });
-    }
   });
 
   leaveBtn?.addEventListener("click", () => {
@@ -93,6 +97,7 @@ export const TournamentController = async (root: HTMLElement) => {
     ws.close();
 
     startBtn?.removeEventListener("click", () => {});
+    joinBtn?.removeEventListener("click", () => {});
     leaveBtn?.removeEventListener("click", () => {});
   };
 
