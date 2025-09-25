@@ -176,9 +176,11 @@ export class TournamentManager {
     if (!currentRoundMatches.every((m) => m.status === "completed")) return;
 
     const winners = this.tournament.waitingArea;
+    const champion = winners[0];
 
     if (winners.length === 1) {
       this.tournament.status = "completed";
+      champion.ws.send(JSON.stringify({ type: "tournamentComplete" }));
       return;
     }
 
