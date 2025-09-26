@@ -39,7 +39,7 @@ await fastify.register(cors, {
 await fastify.register(websocket);
 
 await fastify.register(fastifyJWT, {
-  secret: process.env.JWT_SECRET || "supersecret"
+	secret: process.env.JWT_SECRET || "supersecret"
 })
 
 await fastify.register(fastifyCookie);
@@ -58,161 +58,186 @@ const clients = new Map();
 // Later this should be moved to a more sophisticated user management system where new users are registered and authenticated
 fastify.get("/ws", { websocket: true }, (connection, req) => {
 	console.log("New WebSocket connection in backend");
-  // Getting the userId from the JWT token in the cookie
-  const userId = getUserIdFromRequest(req, fastify);
-  if (userId === -1) {
-    connection.socket.close();
-    return;
-  }
+	// Getting the userId from the JWT token in the cookie
+	const userId = getUserIdFromRequest(req, fastify);
+	if (userId === -1) {
+		connection.socket.close();
+		return;
+	}
 
-  // Get the websocket from the connection request
-  const ws = connection.socket;
-  // Add the new connection to the clients map of clientIds to websockets
-  let set = clients.get(userId);
-  if (!set) {
-    set = new Set();
-    clients.set(userId, set);
-  }
-  // If the websocket is already in the set, it is simply ignored and not added to the set again
-  set.add(ws);
+	// Get the websocket from the connection request
+	const ws = connection.socket;
+	// Add the new connection to the clients map of clientIds to websockets
+	let set = clients.get(userId);
+	if (!set) {
+		set = new Set();
+		clients.set(userId, set);
+	}
+	// If the websocket is already in the set, it is simply ignored and not added to the set again
+	set.add(ws);
 
-  console.log(`Current connected clients: ${[...clients.keys()]}`);
+	console.log(`Current connected clients: ${[...clients.keys()]}`);
 
 	// When a client disconnects, remove it
 	ws.on("close", () => {
-    console.log("Client disconnected in backend");
-    // Remove the websocket from the set of websockets for this userId
+		// Remove the websocket from the set of websockets for this userId
 		set.delete(ws);
-    // If the set is empty, remove the userId from the clients map
-    if (set.size === 0) clients.delete(userId);
+		// If the set is empty, remove the userId from the clients map
+		if (set.size === 0) clients.delete(userId);
 
-    const index = rooms.findIndex(room => room.id === ws._roomId);
-    const room = rooms[index];
-    if (!room || !room.players.has(ws)) return;
+		const index = rooms.findIndex(room => room.id === ws._roomId);
+		const room = rooms[index];
 
-    // const userId = room.getPlayer(ws)?.id;
+		if (!room || !room.players.has(ws)) {
+			for (const t of Object.values(tournaments)) {
+				if (t.hasPlayer(userId)) {
+					t.handleDisconnect(userId);
+				}
+			}
+			return;
+		}
 
-    // Remove disconnected player
-    room.removePlayer(ws);
+		// const userId = room.getPlayer(ws)?.id;
 
-    // Tournament cleanup
-    if (room.tournamentManager && userId) {
-      room.tournamentManager.handleDisconnect(userId);
-    }
+		// Remove disconnected player
+		room.removePlayer(ws);
 
-    // Clean up room if empty
-    if (room.players.size === 0) rooms.splice(index, 1);
-  });
+		// Tournament cleanup
+		if (room.tournamentManager && userId) {
+			room.tournamentManager.handleDisconnect(userId);
+		}
+
+		// Clean up room if empty
+		if (room.players.size === 0) rooms.splice(index, 1);
+	});
 
 
-  // When (on the server side) a message is received from a client, parse it and store it in the db and broadcast it to the others
-  ws.on("message", async (message) => {
-    try {
-      // Convert Buffer to string before parsing
-      const str = message.toString();
-      parsed = JSON.parse(str);
-    } catch (e) {
-      console.error("Invalid JSON received:", message.toString());
-      return;
-    }
+	// When (on the server side) a message is received from a client, parse it and store it in the db and broadcast it to the others
+	ws.on("message", async (message) => {
+		let parsed;
+		try {
+			console.log("Received message:", message);
+			// Convert Buffer to string before parsing
+			console.log("Converting to string...")
+			const str = message.toString();
+			console.log("Message as string:", str);
+			parsed = JSON.parse(str);
+		} catch (e) {
+			console.error("Invalid JSON received:", message.toString());
+			return;
+		}
 
-    const { type } = parsed;
-    console.log(`parsed message: ${JSON.stringify(parsed)}. Type: ${type}`);
+		const { type } = parsed;
+		console.log(`parsed message: ${JSON.stringify(parsed)}. Type: ${type}`);
 
-      if (type === "chat") {
-        const { content, to } = parsed;
-		// ws?.send({ type: "chat", content: text, to: currentChat.peerId });
-		console.log(`Received chat message from user ${userId}: ${content}, to: ${to}`);
-        // await addRowToTable(db, "messages", "userId, content", `${userId}, '${content}'`);
-        // Send the message, which the client sent to all connected clients
-        // broadcaster(to, ws, JSON.stringify({ type: 'chat', userId: userId, content: content }));
-		console.log("Sending chat message to user", to);
-		const set = clients.get(to);
-		if (!set) return;
-		for (const socket of set) {
-			if (socket.readyState === 1) {
-				socket.send(JSON.stringify({ type: "chat", userId: userId, content: content }));
+		if (type === "chat") {
+			const { content, to } = parsed;
+			// ws?.send({ type: "chat", content: text, to: currentChat.peerId });
+			console.log(`Received chat message from user ${userId}: ${content}, to: ${to}`);
+			// await addRowToTable(db, "messages", "userId, content", `${userId}, '${content}'`);
+			// Send the message, which the client sent to all connected clients
+			// broadcaster(to, ws, JSON.stringify({ type: 'chat', userId: userId, content: content }));
+			console.log("Sending chat message to user", to);
+			const set = clients.get(to);
+			if (!set) return;
+			for (const socket of set) {
+				if (socket.readyState === 1) {
+					socket.send(JSON.stringify({ type: "chat", userId: userId, content: content }));
+				}
+			}
+			console.log("Chat message sent to user", to);
+
+		} else if (type === "join") {
+			// Join a game room
+			const room = getOrCreateRoom();
+			if (room.players.has(ws)) return;
+			room.addPlayer(userId, ws);
+			// Response to the client, which side the player is on and the current state to render the initial game state
+			ws.send(JSON.stringify({ type: "join", roomId: room.id, side: ws._side, gameConfig: room.config, state: room.state }));
+
+		} else if (type === "leave") {
+			// console.log(`player id: ${userId} wants to leave the channel: ${roomId}`);
+			const index = rooms.findIndex(room => room.id === ws._roomId);
+			const room = rooms[index];
+			ws._roomId = null;
+			if (!room || !room.players.has(ws)) {
+				for (const t of Object.values(tournaments)) {
+					if (t.hasPlayer(userId)) {
+						t.handleDisconnect(userId);
+					}
+				}
+				return;
+			}
+			room.removePlayer(ws);
+			try { ws.send(JSON.stringify({ type: "tournamentEliminated" })); ws.close(); } catch { }
+			if (room.tournamentManager && userId) {
+				room.tournamentManager.handleDisconnect(userId);
+			}
+			if (room.players.size === 0) rooms.splice(index, 1);
+		} else if (type === "ready") {
+			const { userId } = parsed;
+			const index = rooms.findIndex(room => room.id === ws._roomId);
+			const room = rooms[index];
+			if (!room || room.getPlayer(ws).ready) return;
+			room.getPlayer(ws).ready = true;
+			startLoop(room);
+			broadcaster(room.players.keys(), null, JSON.stringify({ type: "ready", userId }));
+
+		} else if (type === "input") {
+			const { direction } = parsed;
+			const index = rooms.findIndex(room => room.id === ws._roomId);
+			const room = rooms[index];
+			if (!room || !room.state.started) return;
+			if (ws._side === "left") room.inputs.left = direction;
+			else if (ws._side === "right") room.inputs.right = direction;
+
+		} else if (type === "joinTournament") {
+			try {
+				// const { userId } = parsed;
+
+				// Prevent joining a new tournament if the user is already in any active (non-completed) tournament
+				const alreadyInTournament = Object.values(tournaments).some((mgr) => {
+					// mgr is a TournamentManager instance; get its serializable tournament state
+					if (!mgr || typeof mgr.getTournament !== "function") return false;
+					const tour = mgr.getTournament();
+					if (!tour || tour.status === "completed") return false;
+					const inPlayers = Array.isArray(tour.players) && tour.players.some(p => p.id === userId);
+					const inWaiting = Array.isArray(tour.waitingArea) && tour.waitingArea.some(p => p.id === userId);
+					const inMatches = Array.isArray(tour.matches) && tour.matches.some(m => (m.p1?.id === userId) || (m.p2?.id === userId));
+					return inPlayers || inWaiting || inMatches;
+				});
+
+				if (alreadyInTournament) {
+					console.log("Already in an active tournament!");
+					return;
+				}
+
+				db.get("SELECT id, username FROM users WHERE id = ?", [userId], (err, row) => {
+					if (err || !row) {
+						console.error("Failed to read user for tournament join:", err?.message);
+						return;
+					}
+					let manager = Object.values(tournaments).find(
+						(t) => t.getTournament().status === "pending" && t.getTournament().players.length < 4
+					);
+
+					if (!manager) {
+						manager = new TournamentManager();
+						tournaments[manager.getTournament().id] = manager;
+					}
+
+					manager.addPlayer({ id: userId, username: row.username }, ws);
+					ws.send(JSON.stringify({ type: 'joinedTournament', t_id: manager.getTournament().id }))
+				});
+			} catch (err) {
+				console.error("Failed to join tournament:", err.message);
+				ws.send(JSON.stringify({
+					type: "error",
+					message: err.message
+				}));
 			}
 		}
-		console.log("Chat message sent to user", to);
-
-      } else if (type === "join") {
-        // Join a game room
-        const room = getOrCreateRoom();
-        if (room.players.has(ws)) return;
-        room.addPlayer(userId, ws);
-        // Response to the client, which side the player is on and the current state to render the initial game state
-        ws.send(JSON.stringify({ type: "join", roomId: room.id, side: ws._side, gameConfig: room.config, state: room.state }));
-
-      } else if (type === "leave") {
-        // console.log(`player id: ${userId} wants to leave the channel: ${roomId}`);
-        const index = rooms.findIndex(room => room.id === ws._roomId);
-        const room = rooms[index];
-        ws._roomId = null;
-        if (!room || !room.players.has(ws)) return;
-        room.removePlayer(ws);
-        try { ws.send(JSON.stringify({ type: "tournamentEliminated" })); ws.close(); } catch {}
-        if (room.tournamentManager && userId) {
-          room.tournamentManager.handleDisconnect(userId);
-        }
-        if (room.players.size === 0) rooms.splice(index, 1);
-      } else if (type === "ready") {
-      const { userId } = parsed;
-      const index = rooms.findIndex(room => room.id === ws._roomId);
-      const room = rooms[index];
-      if (!room || room.getPlayer(ws).ready) return;
-      room.getPlayer(ws).ready = true;
-      startLoop(room);
-      broadcaster(room.players.keys(), null, JSON.stringify({ type: "ready", userId }));
-
-    } else if (type === "input") {
-      const { direction } = parsed;
-      const index = rooms.findIndex(room => room.id === ws._roomId);
-      const room = rooms[index];
-      if (!room || !room.state.started) return;
-      if (ws._side === "left") room.inputs.left = direction;
-      else if (ws._side === "right") room.inputs.right = direction;
-
-    } else if (type === "joinTournament") {
-      try {
-        const { userId } = parsed;
-        
-        // Prevent joining a new tournament if the user is already in any active (non-completed) tournament
-        const alreadyInTournament = Object.values(tournaments).some((mgr) => {
-          // mgr is a TournamentManager instance; get its serializable tournament state
-          if (!mgr || typeof mgr.getTournament !== "function") return false;
-          const tour = mgr.getTournament();
-          if (!tour || tour.status === "completed") return false;
-          const inPlayers = Array.isArray(tour.players) && tour.players.some(p => p.id === userId);
-          const inWaiting = Array.isArray(tour.waitingArea) && tour.waitingArea.some(p => p.id === userId);
-          const inMatches = Array.isArray(tour.matches) && tour.matches.some(m => (m.p1?.id === userId) || (m.p2?.id === userId));
-          return inPlayers || inWaiting || inMatches;
-        });
-
-        if (alreadyInTournament) {
-          console.log("Already in an active tournament!");
-          return;
-        }
-
-        let manager = Object.values(tournaments).find(
-          (t) => t.getTournament().status === "pending" && t.getTournament().players.length < 4
-        );
-
-        if (!manager) {
-          manager = new TournamentManager();
-          tournaments[manager.getTournament().id] = manager;
-        }
-
-        manager.addPlayer({ id: userId }, ws);
-      } catch (err) {
-        console.error("Failed to join tournament:", err.message);
-        ws.send(JSON.stringify({
-          type: "error",
-          message: err.message
-        }));
-      }
-    }
-  });
+	});
 });
 
 
@@ -231,8 +256,8 @@ fastify.post("/api/register", (request, reply) => {
 			if (err) {
 				if (err.message.includes("UNIQUE")) {
 					return reply
-					.code(400)
-					.send({ error: "Username or email already taken" });
+						.code(400)
+						.send({ error: "Username or email already taken" });
 				}
 				return reply.code(500).send({ error: err.message });
 			}
@@ -309,8 +334,8 @@ fastify.post("/api/verify-2fa", (request, reply) => {
 				return reply.code(400).send({ error: "User not found" });
 
 			// Compare input code with currently generated code by Autheticator App.
-      // If the user has disabled 2FA, accept the code "000000" as a bypass
-	  		console.log("Verifying 2FA code...");
+			// If the user has disabled 2FA, accept the code "000000" as a bypass
+			console.log("Verifying 2FA code...");
 			if (!authenticator.check(code, user.totp_secret) && code !== "000000") {
 				console.log("Invalid 2FA code");
 				return reply.code(400).send({ error: "Invalid or expired 2FA code" });
@@ -403,7 +428,7 @@ fastify.post("/api/logout", (request, reply) => {
 
 fastify.post("/api/delete-account", (request, reply) => {
 	const { userId, password } = request.body;
-	
+
 	db.get("SELECT * FROM users WHERE id = ?",
 		[userId],
 		(err, user) => {
@@ -428,90 +453,90 @@ fastify.post("/api/delete-account", (request, reply) => {
 });
 
 export function startLoop(room) {
-  // If the game is already started, do nothing
-  if (room.state.started) return;
+	// If the game is already started, do nothing
+	if (room.state.started) return;
 
-  // If both players are ready, start the game
-  if (room.players.size === 2 && Array.from(room.players.values()).every((p) => p.ready)) {
-    room.state.started = true;
-    console.log("Both players are ready, starting the game in room", room.id);
-    // Initialize timestamp
-    room.state.timestamp = Date.now();
-    // Start the game loop, which updates the game state and broadcasts it to the players every 16ms
-    room.loopInterval = setInterval(() => loop(room), 16);
-    // Send to the backend log that the game has started in a specific room
-    console.log("Game started in room", room.id);
-    // Broadcast the timestamp to the players
-    broadcaster(room.players.keys(), null, JSON.stringify({ type: "start", timestamp: room.state.timestamp }));
-  }
+	// If both players are ready, start the game
+	if (room.players.size === 2 && Array.from(room.players.values()).every((p) => p.ready)) {
+		room.state.started = true;
+		console.log("Both players are ready, starting the game in room", room.id);
+		// Initialize timestamp
+		room.state.timestamp = Date.now();
+		// Start the game loop, which updates the game state and broadcasts it to the players every 16ms
+		room.loopInterval = setInterval(() => loop(room), 16);
+		// Send to the backend log that the game has started in a specific room
+		console.log("Game started in room", room.id);
+		// Broadcast the timestamp to the players
+		broadcaster(room.players.keys(), null, JSON.stringify({ type: "start", timestamp: room.state.timestamp }));
+	}
 }
 
 export function stopRoom(room, roomId) {
-  // Stop the loop for this room
-  if (room && room.loopInterval) {
-    clearInterval(room.loopInterval);
-    room.loopInterval = null;
-  }
+	// Stop the loop for this room
+	if (room && room.loopInterval) {
+		clearInterval(room.loopInterval);
+		room.loopInterval = null;
+	}
 
-  // Remove from global rooms array (use passed roomId or room.id)
-  /*const idToRemove = roomId ?? (room && room.id);
-  if (typeof idToRemove !== "undefined") {
-    const index = rooms.findIndex(r => r.id === idToRemove);
-    if (index !== -1) rooms.splice(index, 1);
-  }*/
+	// Remove from global rooms array (use passed roomId or room.id)
+	/*const idToRemove = roomId ?? (room && room.id);
+	if (typeof idToRemove !== "undefined") {
+	  const index = rooms.findIndex(r => r.id === idToRemove);
+	  if (index !== -1) rooms.splice(index, 1);
+	}*/
 }
 
 // This function is called every 33ms to update the game state based on the current state and player input.
 // Then broadcast it to the players, so that they can render the new state
 export function loop(room) {
 
-  // console.log("Game room tick. GameStatus:", room.state);
-  const config = room.config;
-  movePaddles(room.tempState, room.inputs, config);
-  // run server-side ball physics in "real" mode so paddle collisions and scoring are applied
-  moveBall(room.tempState, room.ballV, config, true);
+	// console.log("Game room tick. GameStatus:", room.state);
+	const config = room.config;
+	movePaddles(room.tempState, room.inputs, config);
+	// run server-side ball physics in "real" mode so paddle collisions and scoring are applied
+	moveBall(room.tempState, room.ballV, config, true);
 
-  room.state.p1Y = room.tempState.p1Y;
-  room.state.p2Y = room.tempState.p2Y;
-  // Ensure paddle X positions are propagated to the public state so clients know paddle horizontal positions
-  if (typeof room.tempState.p1X !== 'undefined') room.state.p1X = room.tempState.p1X;
-  if (typeof room.tempState.p2X !== 'undefined') room.state.p2X = room.tempState.p2X;
-  room.state.ballX = room.tempState.ballX;
-  room.state.ballY = room.tempState.ballY;
-  room.state.scoreL = room.tempState.scoreL;
-  room.state.scoreR = room.tempState.scoreR;
+	room.state.p1Y = room.tempState.p1Y;
+	room.state.p2Y = room.tempState.p2Y;
+	// Ensure paddle X positions are propagated to the public state so clients know paddle horizontal positions
+	if (typeof room.tempState.p1X !== 'undefined') room.state.p1X = room.tempState.p1X;
+	if (typeof room.tempState.p2X !== 'undefined') room.state.p2X = room.tempState.p2X;
+	room.state.ballX = room.tempState.ballX;
+	room.state.ballY = room.tempState.ballY;
+	room.state.scoreL = room.tempState.scoreL;
+	room.state.scoreR = room.tempState.scoreR;
 
-  // broadcast the new state to the players
-  broadcaster(room.players.keys(), null, JSON.stringify({ type: "state", state: room.state }));
-  // console.log("Broadcasted state:", room.state);
+	// broadcast the new state to the players
+	broadcaster(room.players.keys(), null, JSON.stringify({ type: "state", state: room.state }));
+	// console.log("Broadcasted state:", room.state);
 
-  // Check for win condition: first to 5
-  if (room.state.scoreL >= 5 || room.state.scoreR >= 5) {
-    clearInterval(room.loopInterval);
-    room.state.started = false;
+	// Check for win condition: first to 5
+	if (room.state.scoreL >= 5 || room.state.scoreR >= 5) {
+		clearInterval(room.loopInterval);
+		room.state.started = false;
 
-    const winnerSide = room.state.scoreL >= 5 ? "left" : "right";
-    const loserSide = winnerSide === "left" ? "left" : "right";
+		const winnerSide = room.state.scoreL >= 5 ? "left" : "right";
+		const loserSide = winnerSide === "left" ? "left" : "right";
 
-    // Find winner and loser entries (socket + player)
-    const winnerEntry = [...room.players.entries()].find(
-      ([sock, player]) => sock._side === winnerSide
-    );
-    const loserEntry = [...room.players.entries()].find(
-      ([sock, player]) => sock._side === loserSide
-    );
+		// Find winner and loser entries (socket + player)
+		const winnerEntry = [...room.players.entries()].find(
+			([sock, player]) => sock._side === winnerSide
+		);
+		const loserEntry = [...room.players.entries()].find(
+			([sock, player]) => sock._side === loserSide
+		);
 
-    const winner = winnerEntry?.[1];
-    const loserSock = loserEntry?.[0];
-    const loser = loserEntry?.[1];
+		const winner = winnerEntry?.[1];
+		const loserSock = loserEntry?.[0];
+		const loser = loserEntry?.[1];
 
-    if (winner && loser && room.tournamentManager && room.matchId !== undefined) {
-      room.tournamentManager.recordMatchResult(room.matchId, winner.userId);
-      const t = room.tournamentManager.getTournament();
-      if (t.status === "completed")
-        delete tournaments[t.id];
-    }
-  }
+		if (winner && loser && room.tournamentManager && room.matchId !== undefined) {
+			room.tournamentManager.recordMatchResult(room.matchId, winner.userId);
+			const t = room.tournamentManager.getTournament();
+			if (t.status === "completed")
+				delete tournaments[t.id];
+		}
+	}
 
 }
 

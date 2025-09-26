@@ -17,6 +17,11 @@ export class TournamentManager {
     this.matchCounter = 0;
   }
 
+  hasPlayer(uId) {
+    const is = this.tournament.players.find((p) => p.id === uId)
+    return (is);
+  }
+
   addPlayer(player, ws) {
     if (this.tournament.players.find((p) => p.id === player.id)) {
       throw new Error("Player already joined this tournament");
@@ -28,22 +33,25 @@ export class TournamentManager {
 
     this.tournament.players.push({ ...player, ws });
     if (this.tournament.players.length === this.tournament.size) {
-      this.startTournament();
+      this.startTournament(ws);
     }
     this.broadcastTournament();
   }
 
-  startTournament() {
+  startTournament(ws) {
     const shuffled = shufflePlayers(this.tournament.players);
     const matches = [];
 
     for (let i = 0; i < this.tournament.size; i += 2) {
-      matches.push(this.createMatch(shuffled[i], shuffled[i + 1], 1));
+      const m = this.createMatch(shuffled[i], shuffled[i + 1], 1)
+      matches.push(m);
+      // ws.send(JSON.stringify({ type: 'tournamentGroup', group: m.id }))
     }
 
     this.tournament.matches = matches;
     this.tournament.round = 1;
     this.tournament.status = "active";
+    this.broadcastTournament();
   }
 
   cleanup() {
@@ -168,6 +176,23 @@ export class TournamentManager {
         username: p.username,
         score: p.score || 0,
         ready: p.ready || false
+      })),
+      matches: tournament.matches.map(m => ({
+        id: m.id,
+        round: m.round,
+        p1: m.p1 ? {
+          id: m.p1.id,
+          username: m.p1.username
+        } : null,
+        p2: m.p2 ? {
+          id: m.p2.id,
+          username: m.p2.username
+        } : null,
+        status: m.status,
+        winner: m.winner ? {
+          id: m.winner.id,
+          username: m.winner.username
+        } : null
       }))
     };
 

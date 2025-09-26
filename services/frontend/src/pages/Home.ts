@@ -659,15 +659,15 @@ export const HomeController = async (root: HTMLElement) => {
 	});
 
 	const logoutBtn = root.querySelector<HTMLButtonElement>(".logout");
-	if (logoutBtn) {
-		logoutBtn.addEventListener("click", () => {
-			fetch(`https://${location.host}/api/logout`, {
-				method: "POST",
-				credentials: "include"
-			});
-			navigate("/login");
-		});
-	}
+	// if (logoutBtn) {
+	// 	logoutBtn.addEventListener("click", () => {
+	// 		fetch(`https://${location.host}/api/logout`, {
+	// 			method: "POST",
+	// 			credentials: "include"
+	// 		});
+	// 		navigate("/login");
+	// 	});
+	// }
 
   // Settings modal logic
 	const settingsBtn = root.querySelector<HTMLButtonElement>("#settingsBtn");
@@ -675,7 +675,6 @@ export const HomeController = async (root: HTMLElement) => {
 	const closeSettingsBtn = root.querySelector<HTMLButtonElement>("#closeSettingsBtn");
 	const enable2faBtn = root.querySelector<HTMLButtonElement>("#enable2faBtn");
 	const qrContainer = root.querySelector<HTMLDivElement>("#qrContainer");
-	const logoutBtn = root.querySelector<HTMLButtonElement>("#logoutBtn");
 	const deleteAccountBtn = root.querySelector<HTMLButtonElement>("#deleteAccountBtn");
 	const deletionForm = root.querySelector<HTMLFormElement>("#deletionForm");
 	const deletePasswordInput = root.querySelector<HTMLInputElement>("#deletePassword");
