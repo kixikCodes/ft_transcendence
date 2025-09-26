@@ -5,9 +5,9 @@ type Route = { template: string; auth?: boolean; };
 const routes: Record<string, Route> = {
     "/": { template: "/pages/Home.html", auth: true },
     "/login": { template: "/pages/Login.html", auth: false },
-    "/register": { template: "/pages/Register.html", auth: false },
     "/profile": { template: "/pages/Profile.html", auth: true },
     "/dashboard": { template: "/pages/Dashboard.html", auth: true },
+    "/tournament": { template: "/pages/Tournament.html", auth: true },
     "/404": { template: "/pages/404.html", auth: false },
 };
 
@@ -78,6 +78,10 @@ async function handleLocation(): Promise<void> {
         } else if (path === "/dashboard") {
             const { mountDashboard } = await import("/src/pages/Dashboard.js");
             teardown = await mountDashboard(root);
+        } else if (path === "/tournament") {
+            console.log("Loading tournament page");
+            const { TournamentController } = await import("/src/pages/Tournament.js");
+            teardown = await TournamentController(root);
         }
     } catch (e) {
         console.error(e);

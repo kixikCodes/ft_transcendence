@@ -1,5 +1,5 @@
 import { GameStatus } from "../interfaces/GameInterfaces.js";
-import { RemotePlayerManager } from "./RemotePlayerManager.js";
+//import { RemotePlayerManager } from "./RemotePlayerManager.js";
 
 export class InputHandler {
 	private keys:		Record<string, boolean> = {};

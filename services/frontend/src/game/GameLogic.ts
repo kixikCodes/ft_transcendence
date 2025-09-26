@@ -53,11 +53,11 @@ export class GameLogic {
 		// LOCAL/AI: Use direct Babylon.js object manipulation
 		console.log(this.scene.ball.speed);
 		const p1 = this.settings.getOpponent() === 'AI'
-			? this.paddleLogic.dualPaddleControl(this.scene.paddle1)
+			? this.paddleLogic.aiPaddleControl(this.scene.paddle1, this.settings.getAiDifficulty())
 			: this.paddleLogic.playerPaddleControl(this.scene.paddle1);
 
 		const p2 = this.settings.getOpponent() === 'AI'
-			? this.paddleLogic.aiPaddleControl(this.scene.paddle2, this.settings.getOpponent())
+			? this.paddleLogic.aiPaddleControl(this.scene.paddle2, this.settings.getAiDifficulty())
 			: this.paddleLogic.playerPaddleControl(this.scene.paddle2);
 
 		// Move paddles directly
@@ -86,9 +86,9 @@ export class GameLogic {
 		const	paddleSize = this.conf.paddleSize;
 
 		if (ball.speed.hspd == 0)
-			ball.speed.hspd = (Math.random() < 0.5 ? -this.conf.FIELD_WIDTH : this.conf.FIELD_WIDTH) / 250;
+			ball.speed.hspd = (Math.random() < 0.5 ? -this.conf.FIELD_WIDTH : this.conf.FIELD_WIDTH) / 150;
 		if (ball.speed.vspd == 0)
-			ball.speed.vspd = (Math.random() < 0.5 ? -this.conf.FIELD_HEIGHT : this.conf.FIELD_HEIGHT) / 250;
+			ball.speed.vspd = (Math.random() < 0.5 ? -this.conf.FIELD_HEIGHT : this.conf.FIELD_HEIGHT) / 200;
 
 
 		//	Update ball position based on speed attribute
@@ -164,8 +164,8 @@ export class GameLogic {
 		ball.spd_damp = 0;
 
 		//	Randomize direction for next serve
-		ball.speed.hspd = Math.random() < 0.5 ? -0.75 : 0.75;
-		ball.speed.vspd = Math.random() < 0.5 ? -0.75 : 0.75;
+		ball.speed.hspd *= Math.random() < 0.5 ? -1 : 1;
+		ball.speed.vspd *= Math.random() < 0.5 ? -1 : 1;
 
 		//	Reset paddle AI cooldowns
 		this.paddleLogic.lastPredictionTime[0] = 0;
@@ -187,7 +187,7 @@ export class GameLogic {
 			return;
 
 		//	Set shake values
-		const shakeMagnitude = (force * 0.04) + Math.random() * force * 0.02;
+		const shakeMagnitude = (force * 0.02) + Math.random() * force * 0.01;
 		const shakeDuration = 500;	//in milliseconds
 		const startTime = performance.now();
 
@@ -197,12 +197,15 @@ export class GameLogic {
 			const fade = 1 - progress;
 			const cam = camera as any;
 
-			if (progress < 1) {
+			if (progress < 1)
+			{
 				camera.alpha = cam.og_alpha + (Math.random() - 0.5) * shakeMagnitude * fade;
 				camera.beta = cam.og_beta + (Math.random() - 0.5) * shakeMagnitude * fade;
 				camera.radius = cam.og_radius + (Math.random() - 0.5) * shakeMagnitude * fade;
 				requestAnimationFrame(animateShake);
-			} else {
+			}
+			else
+			{
 				camera.alpha = cam.og_alpha;
 				camera.beta = cam.og_beta;
 				camera.radius = cam.og_radius;
@@ -213,6 +216,6 @@ export class GameLogic {
 
 	public resetTempStates(): void {
 		this.ballV = resetBall();
-		this.tempState = { p1Y: 0, p2Y: 0, ballX: 0, ballY: 0, scoreL: 0, scoreR: 0, p1_spd: 0, p2_spd: 0 };
+		this.tempState = { p1X: 0, p1Y: 0, p2X: 0, p2Y: 0, ballX: 0, ballY: 0, scoreL: 0, scoreR: 0, p1_spd: 0, p2_spd: 0 };
 	}
 }

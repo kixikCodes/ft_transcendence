@@ -12,6 +12,9 @@ import fastifyJWT from "@fastify/jwt";
 import bcrypt from "bcryptjs";			// Password encryption
 import qrcode from "qrcode";			// QR code gen for autheticator app
 import { authenticator } from "otplib";	// Authenticator App functionality
+import tournamentRoutes from "./tournament/managers/TournamentRoutes.js";
+import { TournamentManager } from './tournament/managers/TournamentManager.js';
+
 import fastifyRoutes from "./fastifyRoutes.js";
 
 // import * as Shared from "@app/shared";
@@ -21,9 +24,11 @@ import fastifyRoutes from "./fastifyRoutes.js";
 // import { startGameLoop } from "./game.js";
 
 const fastify = Fastify({ logger: true });
+fastify.register(tournamentRoutes);
 // const db = new sqlite3.Database('./database.sqlite');
 // Initialize SQLite database in the data folder
 const db = new sqlite3.Database("./data/database.sqlite");
+let tournaments = {};
 
 // Register CORS and WebSocket plugins
 await fastify.register(cors, {
@@ -80,20 +85,39 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
 		set.delete(ws);
     // If the set is empty, remove the userId from the clients map
     if (set.size === 0) clients.delete(userId);
-	});
+
+    const index = rooms.findIndex(room => room.id === ws._roomId);
+    const room = rooms[index];
+    if (!room || !room.players.has(ws)) return;
+
+    // const userId = room.getPlayer(ws)?.id;
+
+    // Remove disconnected player
+    room.removePlayer(ws);
+
+    // Tournament cleanup
+    if (room.tournamentManager && userId) {
+      room.tournamentManager.handleDisconnect(userId);
+    }
+
+    // Clean up room if empty
+    if (room.players.size === 0) rooms.splice(index, 1);
+  });
+
 
   // When (on the server side) a message is received from a client, parse it and store it in the db and broadcast it to the others
   ws.on("message", async (message) => {
     try {
-      // Parse the incoming message
-      // {"type":"chat","content":"Hello World"}
-      // {"type":"join","userId":1}
-      // {"type":"leave","userId":1,"roomId":"room-123"}
-      // {"type":"ready","userId":1}
-	  console.log("Received message from client:", message);
-      const parsed = JSON.parse(message);
-      const { type } = parsed;
-      console.log(`parsed message: ${JSON.stringify(parsed)}. Type: ${type}`);
+      // Convert Buffer to string before parsing
+      const str = message.toString();
+      parsed = JSON.parse(str);
+    } catch (e) {
+      console.error("Invalid JSON received:", message.toString());
+      return;
+    }
+
+    const { type } = parsed;
+    console.log(`parsed message: ${JSON.stringify(parsed)}. Type: ${type}`);
 
       if (type === "chat") {
         const { content, to } = parsed;
@@ -126,61 +150,71 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
         const room = rooms[index];
         ws._roomId = null;
         if (!room || !room.players.has(ws)) return;
-        if (room.loopInterval) {
-          clearInterval(room.loopInterval);
-          room.loopInterval = null;
-        }
-        room.state.started = false;
-        ws.send(JSON.stringify({ type: "chat", userId: -1, content: `Left room ${ws._roomId}.` }));
-        broadcaster(room.players.keys(), ws, JSON.stringify({ type: "chat", userId: userId, content: `User ${userId} left room ${ws._roomId}` }));
-        broadcaster(room.players.keys(), null, JSON.stringify({ type: "reset" }));
         room.removePlayer(ws);
-        if (room.players.size === 0) {
-          const index = rooms.findIndex(room => room.id === ws._roomId);
-          rooms.splice(index, 1);
-          // rooms.delete(ws._roomId);
+        try { ws.send(JSON.stringify({ type: "tournamentEliminated" })); ws.close(); } catch {}
+        if (room.tournamentManager && userId) {
+          room.tournamentManager.handleDisconnect(userId);
         }
-        try {
-          ws.close();
-        } catch {}
-
+        if (room.players.size === 0) rooms.splice(index, 1);
       } else if (type === "ready") {
-        const {userId} = parsed;
-        console.log("In ready1");
-        console.log("ws._roomId:", ws._roomId);
-        const index = rooms.findIndex(room => room.id === ws._roomId);
-        const room = rooms[index];
-        // If the player is already ready
-        console.log("Room found: ", room);
-        if (room.getPlayer(ws).ready) return;
-        console.log("Player is not ready yet");
-        room.getPlayer(ws).ready = true;
-        console.log("In ready2");
-        startLoop(room);
-        console.log("In ready3");
-        console.log(`Sending ready state of user ${userId} to all players in room ${room.id}`);
-        broadcaster(room.players.keys(), null, JSON.stringify({ type: "ready", userId: userId }));
-        console.log(`Message sent to all players in room ${room.id} that user ${userId} is ready`);
+      const { userId } = parsed;
+      const index = rooms.findIndex(room => room.id === ws._roomId);
+      const room = rooms[index];
+      if (!room || room.getPlayer(ws).ready) return;
+      room.getPlayer(ws).ready = true;
+      startLoop(room);
+      broadcaster(room.players.keys(), null, JSON.stringify({ type: "ready", userId }));
 
-      } else if (type === "input") {
-        console.log("Backend: Received input from client:", parsed);
-        const { direction } = parsed;
-        const index = rooms.findIndex(room => room.id === ws._roomId);
-        const room = rooms[index];
-        if (!room || !room.state.started) return;
+    } else if (type === "input") {
+      const { direction } = parsed;
+      const index = rooms.findIndex(room => room.id === ws._roomId);
+      const room = rooms[index];
+      if (!room || !room.state.started) return;
+      if (ws._side === "left") room.inputs.left = direction;
+      else if (ws._side === "right") room.inputs.right = direction;
 
-        if (ws._side === "left")  room.inputs.left  = direction;
-        else if (ws._side === "right") room.inputs.right = direction;
+    } else if (type === "joinTournament") {
+      try {
+        const { userId } = parsed;
+        
+        // Prevent joining a new tournament if the user is already in any active (non-completed) tournament
+        const alreadyInTournament = Object.values(tournaments).some((mgr) => {
+          // mgr is a TournamentManager instance; get its serializable tournament state
+          if (!mgr || typeof mgr.getTournament !== "function") return false;
+          const tour = mgr.getTournament();
+          if (!tour || tour.status === "completed") return false;
+          const inPlayers = Array.isArray(tour.players) && tour.players.some(p => p.id === userId);
+          const inWaiting = Array.isArray(tour.waitingArea) && tour.waitingArea.some(p => p.id === userId);
+          const inMatches = Array.isArray(tour.matches) && tour.matches.some(m => (m.p1?.id === userId) || (m.p2?.id === userId));
+          return inPlayers || inWaiting || inMatches;
+        });
 
-      } else if (type === "teardown") {
-        // console.log("Teardown message from client:", parsed);
+        if (alreadyInTournament) {
+          console.log("Already in an active tournament!");
+          return;
+        }
+
+        let manager = Object.values(tournaments).find(
+          (t) => t.getTournament().status === "pending" && t.getTournament().players.length < 4
+        );
+
+        if (!manager) {
+          manager = new TournamentManager();
+          tournaments[manager.getTournament().id] = manager;
+        }
+
+        manager.addPlayer({ id: userId }, ws);
+      } catch (err) {
+        console.error("Failed to join tournament:", err.message);
+        ws.send(JSON.stringify({
+          type: "error",
+          message: err.message
+        }));
       }
-    } catch (e) {
-      console.error("Invalid JSON received:", message);
-      return;
     }
   });
 });
+
 
 fastify.post("/api/register", (request, reply) => {
 	const { username, email, password } = request.body;
@@ -413,12 +447,18 @@ export function startLoop(room) {
 }
 
 export function stopRoom(room, roomId) {
-  // Destroy the room and stop the game loop
-  if (room.loopInterval) clearInterval(room.loopInterval);
-  const index = rooms.findIndex(r => r.id === room.id);
-  if (index !== -1) {
-    rooms.splice(index, 1);
+  // Stop the loop for this room
+  if (room && room.loopInterval) {
+    clearInterval(room.loopInterval);
+    room.loopInterval = null;
   }
+
+  // Remove from global rooms array (use passed roomId or room.id)
+  /*const idToRemove = roomId ?? (room && room.id);
+  if (typeof idToRemove !== "undefined") {
+    const index = rooms.findIndex(r => r.id === idToRemove);
+    if (index !== -1) rooms.splice(index, 1);
+  }*/
 }
 
 // This function is called every 33ms to update the game state based on the current state and player input.
@@ -444,6 +484,35 @@ export function loop(room) {
   // broadcast the new state to the players
   broadcaster(room.players.keys(), null, JSON.stringify({ type: "state", state: room.state }));
   // console.log("Broadcasted state:", room.state);
+
+  // Check for win condition: first to 5
+  if (room.state.scoreL >= 5 || room.state.scoreR >= 5) {
+    clearInterval(room.loopInterval);
+    room.state.started = false;
+
+    const winnerSide = room.state.scoreL >= 5 ? "left" : "right";
+    const loserSide = winnerSide === "left" ? "left" : "right";
+
+    // Find winner and loser entries (socket + player)
+    const winnerEntry = [...room.players.entries()].find(
+      ([sock, player]) => sock._side === winnerSide
+    );
+    const loserEntry = [...room.players.entries()].find(
+      ([sock, player]) => sock._side === loserSide
+    );
+
+    const winner = winnerEntry?.[1];
+    const loserSock = loserEntry?.[0];
+    const loser = loserEntry?.[1];
+
+    if (winner && loser && room.tournamentManager && room.matchId !== undefined) {
+      room.tournamentManager.recordMatchResult(room.matchId, winner.userId);
+      const t = room.tournamentManager.getTournament();
+      if (t.status === "completed")
+        delete tournaments[t.id];
+    }
+  }
+
 }
 
 // Start the Fastify server on port 3000 hosting on all interfaces

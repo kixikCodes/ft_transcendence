@@ -633,6 +633,41 @@ export const HomeController = async (root: HTMLElement) => {
 
   // Event listener for the dashboard button
   userDashBtn?.addEventListener("click", userDashBtnClick);
+	// When the ws receives the message type state from the server, subscribe these callback/lambda functions to the message type via ws.ts
+	ws.on("state", (m: { type: "state"; state: ServerState }) => {
+		game.applyServerState(m.state);
+	});
+
+	const tournamentBnt = root.querySelector<HTMLButtonElement>(".tournament_play");
+	if (tournamentBnt) {
+		tournamentBnt.addEventListener('click', () => {
+			navigate("/tournament");
+		});
+	}
+
+	const buttons = root.querySelectorAll<HTMLButtonElement>('.menu button');
+	const tooltip = root.querySelector<HTMLDivElement>('.tooltip');
+	buttons.forEach(btn => {
+		btn.addEventListener('mouseenter', () => {
+			if (tooltip)
+				tooltip.textContent = btn.getAttribute('data-tooltip') || "";
+		});
+		btn.addEventListener('mouseleave', () => {
+			if (tooltip)
+				tooltip.textContent = "";
+		});
+	});
+
+	const logoutBtn = root.querySelector<HTMLButtonElement>(".logout");
+	if (logoutBtn) {
+		logoutBtn.addEventListener("click", () => {
+			fetch(`https://${location.host}/api/logout`, {
+				method: "POST",
+				credentials: "include"
+			});
+			navigate("/login");
+		});
+	}
 
   // Settings modal logic
 	const settingsBtn = root.querySelector<HTMLButtonElement>("#settingsBtn");

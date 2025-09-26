@@ -15,80 +15,65 @@ type Msg =
   // ws.on("reset", (m: { type: "reset" }) => {
 
 class WSClient {
-  // WebSocket connection
   private ws?: WebSocket;
-  // Message queue for messages sent before the connection is open
   private queue: string[] = [];
-  // This stores the lambda funcs/callbacks for each message type, which are functions of type (m: any) => void
   private listeners: Map<string, Set<(m: any) => void>> = new Map();
   private connected = false;
-  // ws/wss: WebSocket protocol, secure (wss) or insecure (ws)
-	// location.protocol: 'http:' or 'https:'
-	// location.host: current host and port (e.g., 'localhost:3000', 'localhost:8443')
+  public userId?: number;
+  private reconnectTimeout?: ReturnType<typeof setTimeout>;
+  private heartbeatInterval?: ReturnType<typeof setInterval>;
+
   private WS_URL = location.protocol === "https:"
     ? `wss://${location.host}/ws`
     : `ws://${location.host}/ws`;
-  private userId?: number;
 
   connect(userId: number) {
-    // If this ws is already connected
-    console.log("WSClient connecting with userId", userId);
-    if (this.connected && this.ws) {
-      console.warn("WSClient already connected");
-      return;
-    }
-    this.userId = userId;
+    // Avoid duplicate connections
+    if (this.connected && this.ws?.readyState === WebSocket.OPEN) return;
 
-    // Create a new WebSocket connection
-    console.log("Connecting to WebSocket at", this.WS_URL);
+    this.userId = userId;
     this.ws = new WebSocket(this.WS_URL);
-    this.connected = true;
-    // When the connection is open, flush the message queue, which is sending the messages that were queued before the connection was established
+
     this.ws.onopen = () => {
-      console.log("WS open", this.ws?.readyState);
+      this.connected = true;
+      console.log("[WS] Connected");
       this.flush();
       this.send({ type: "hello", userId });
+
+      // Start heartbeat (ping every 25s)
+      this.startHeartbeat();
     };
 
-    // Handle messages received from the server
     this.ws.onmessage = (event) => {
-      // Parse the incoming message into a Msg object
       const msg: Msg = JSON.parse(event.data);
       const listeners = this.listeners.get(msg.type);
       if (listeners) {
-        for (const cb of listeners)
-          cb(msg);
+        for (const cb of listeners) cb(msg);
       }
     };
 
-    this.ws.onclose = (ev) => {
-      console.warn("WS close", ev.code, ev.reason);
+    this.ws.onclose = () => {
+      console.warn("[WS] Connection closed");
       this.connected = false;
+      this.stopHeartbeat();
+      this.scheduleReconnect();
     };
 
-    this.ws.onerror = (ev) => {
-      console.error("WebSocket error occurred");
-      console.error("WS error", ev);
+    this.ws.onerror = (err) => {
+      console.error("[WS] Error:", err);
+      this.ws?.close();
     };
   }
 
-  // Subscribe to messages of a specific type, which are received from the server
-  // The handler is a callback or lambda function, which is called when a message of the given type is received
   on(type: string, handler: (m: any) => void) {
-    // Types: 'hello', 'chat', 'state', 'join', 'start'
-    // Set: Lambda functions to be called when a message of the given type is received
-    if (!this.listeners.has(type))
-      this.listeners.set(type, new Set());
-    // Add the handler to the set of listeners
+    if (!this.listeners.has(type)) this.listeners.set(type, new Set());
     this.listeners.get(type)!.add(handler);
   }
 
-  // Unsubscribe from messages again
   off(type: string, handler: (m: any) => void) {
     this.listeners.get(type)?.delete(handler);
   }
 
-  // Responsible for sending messages to the server
   send(obj: any) {
     const s = JSON.stringify(obj);
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
@@ -98,21 +83,42 @@ class WSClient {
     }
   }
 
-  // Responsible for closing the WebSocket connection
   close() {
-    console.log("Closing WebSocket connection");
+    this.stopHeartbeat();
     this.ws?.close();
     this.userId = undefined;
     this.connected = false;
+    clearTimeout(this.reconnectTimeout);
   }
 
-  // Flush the message queue by sending all queued messages to the server
   private flush() {
     while (this.queue.length && this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(this.queue.shift()!);
     }
   }
+
+  private scheduleReconnect() {
+    if (this.reconnectTimeout || !this.userId) return; // already scheduled or no user
+    console.log("[WS] Reconnecting in 3s...");
+    this.reconnectTimeout = setTimeout(() => {
+      this.reconnectTimeout = undefined;
+      this.connect(this.userId!);
+    }, 3000);
+  }
+
+  private startHeartbeat() {
+    this.stopHeartbeat();
+    this.heartbeatInterval = setInterval(() => {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.send({ type: "ping" });
+      }
+    }, 25000);
+  }
+
+  private stopHeartbeat() {
+    if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
+    this.heartbeatInterval = undefined;
+  }
 }
 
-// Export an instance of the WSClient to be used in the home page for handling WebSocket communication (Sending chat messages, joining a room, readying up, receiving game state updates)
 export const ws = new WSClient();
