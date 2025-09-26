@@ -487,8 +487,11 @@ export function loop(room) {
     const loser = loserEntry?.[1];
 
     if (winner && loser && room.tournamentManager && room.matchId !== undefined) {
-        room.tournamentManager.recordMatchResult(room.matchId, winner.userId);
-      }
+      room.tournamentManager.recordMatchResult(room.matchId, winner.userId);
+      const t = room.tournamentManager.getTournament();
+      if (t.status === "completed")
+        delete tournaments[t.id];
+    }
   }
 
 }

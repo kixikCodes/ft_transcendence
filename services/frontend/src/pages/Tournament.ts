@@ -8,13 +8,12 @@ export const TournamentController = async (root: HTMLElement) => {
   // Initialize settings and game
   const settings = new Settings();
   const game = new GameManager(settings);
-  let   joined = false;
 
   // Get current user
   const user = await fetch(`https://${location.host}/api/me`, {
     method: "GET",
     credentials: "include",
-  }).then(r => r.json());
+  }).then((r) => r.json());
 
   if (!user?.id) {
     console.error("User not authenticated");
@@ -38,67 +37,81 @@ export const TournamentController = async (root: HTMLElement) => {
   const joinBtn = root.querySelector<HTMLButtonElement>("#joinBtn");
   const statusEl = root.querySelector<HTMLDivElement>("#tournamentStatus");
 
-  // --- WS event listeners ---
-  ws.on("join", (msg) => {
+  // --- WebSocket event handlers ---
+  const onJoin = (msg: any) => {
     console.log("Tournament join:", msg);
-
     game.setConfig(msg.gameConfig);
     game.applyServerState(msg.state);
-
-    // Make sure inputs are sent remotely
     game.getInputHandler().setRemote(true);
     settings.setOpponent("REMOTE");
-  });
+  };
 
-  ws.on("tournamentUpdate", (msg: { type: "tournamentUpdate"; state: any }) => {
+  const onTournamentUpdate = (msg: { type: "tournamentUpdate"; state: any }) => {
     console.log("Tournament update:", msg.state);
-
     if (statusEl) {
       statusEl.textContent = `Tournament ${msg.state.id} — ${msg.state.status} — Round ${msg.state.round}`;
     }
-  });
+  };
 
-  ws.on("state", (m: { type: "state"; state: ServerState }) => {
+  const onState = (m: { type: "state"; state: ServerState }) => {
     game.applyServerState(m.state);
-  });
+  };
 
-  ws.on("tournamentEliminated", () => {
+  const onEliminated = () => {
     alert("You have been eliminated from the tournament!");
     navigate("/");
-  });
+  };
 
-  ws.on("tournamentComplete", () => {
+  const onComplete = () => {
     alert("You are the winner of this tournament! Well done!");
     navigate("/");
-  });
+  };
 
-  // --- Button actions ---
-  joinBtn?.addEventListener("click", () => {
-    if (ws && ws.userId)
+  ws.on("join", onJoin);
+  ws.on("tournamentUpdate", onTournamentUpdate);
+  ws.on("state", onState);
+  ws.on("tournamentEliminated", onEliminated);
+  ws.on("tournamentComplete", onComplete);
+
+  // --- Button handlers ---
+  const onStart = () => {
+    if (ws) ws.send({ type: "ready", userId });
+  };
+
+  const onJoinBtn = () => {
+    if (ws && ws.userId) {
       ws.send({ type: "joinTournament", userId: ws.userId });
-  });
+    }
+  };
 
-  startBtn?.addEventListener("click", () => {
-    if (ws)
-      ws.send({ type: "ready", userId });
-  });
-
-  leaveBtn?.addEventListener("click", () => {
+  const onLeaveBtn = () => {
     if (ws) {
       ws.send({ type: "leave", userId });
       ws.close();
     }
     navigate("/");
-  });
+  };
+
+  startBtn?.addEventListener("click", onStart);
+  joinBtn?.addEventListener("click", onJoinBtn);
+  leaveBtn?.addEventListener("click", onLeaveBtn);
 
   // --- Cleanup ---
   return () => {
     onLeave();
+
+    // remove WS listeners
+    ws.off("join", onJoin);
+    ws.off("tournamentUpdate", onTournamentUpdate);
+    ws.off("state", onState);
+    ws.off("tournamentEliminated", onEliminated);
+    ws.off("tournamentComplete", onComplete);
     ws.close();
 
-    startBtn?.removeEventListener("click", () => {});
-    joinBtn?.removeEventListener("click", () => {});
-    leaveBtn?.removeEventListener("click", () => {});
+    // remove button listeners
+    startBtn?.removeEventListener("click", onStart);
+    joinBtn?.removeEventListener("click", onJoinBtn);
+    leaveBtn?.removeEventListener("click", onLeaveBtn);
   };
 
   function onLeave() {

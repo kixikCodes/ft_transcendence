@@ -46,6 +46,39 @@ export class TournamentManager {
     this.tournament.status = "active";
   }
 
+  cleanup() {
+    console.log(`Cleaning up tournament ${this.tournament.id}`);
+
+    // Stop any active rooms
+    for (const match of this.tournament.matches) {
+      if (match.room) {
+        if (match.room.loopInterval) {
+          clearInterval(match.room.loopInterval);
+          match.room.loopInterval = null;
+        }
+
+        // Close sockets
+        for (const [ws] of match.room.players) {
+          if (ws && ws.readyState === 1) {
+            try { ws.send(JSON.stringify({ type: "reset" })); ws.close(); } catch {}
+          }
+        }
+
+        match.room.players.clear();
+
+        // Remove from global rooms array
+        const idx = rooms.findIndex(r => r.id === match.room.id);
+        if (idx !== -1) rooms.splice(idx, 1);
+      }
+    }
+
+    this.tournament.players = [];
+    this.tournament.waitingArea = [];
+    this.tournament.matches = [];
+    this.tournament.status = "completed";
+  }
+
+
   createMatch(p1, p2, round) {
     const room = new Room();
     rooms.push(room);
@@ -181,6 +214,7 @@ export class TournamentManager {
     if (winners.length === 1) {
       this.tournament.status = "completed";
       champion.ws.send(JSON.stringify({ type: "tournamentComplete" }));
+      this.cleanup();
       return;
     }
 
