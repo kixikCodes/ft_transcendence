@@ -126,7 +126,7 @@ const clients = new Set();
     clients.add(ws);
 
 	// When a client disconnects, remove it from the clients set
-	ws.on("close", () => {
+  ws.on("close", () => {
     console.log("Client disconnected in backend");
     clients.delete(ws);
 
@@ -134,13 +134,14 @@ const clients = new Set();
     const room = rooms[index];
     if (!room || !room.players.has(ws)) return;
 
+    const userId = room.getPlayer(ws)?.id;
+
     // Remove disconnected player
     room.removePlayer(ws);
 
-    // If tournament and only one player remains, award win
-    if (room.tournamentManager && room.matchId !== undefined && room.players.size === 1) {
-      const remainingPlayer = [...room.players.values()][0];
-      room.tournamentManager.recordMatchResult(room.matchId, remainingPlayer.id, "opponentLeft");
+    // Tournament cleanup
+    if (room.tournamentManager && userId) {
+      room.tournamentManager.handleDisconnect(userId);
     }
 
     // Clean up room if empty
@@ -176,20 +177,18 @@ const clients = new Set();
       ws.send(JSON.stringify({ type: "join", roomId: room.id, side: ws._side, gameConfig: room.config, state: room.state }));
 
     } else if (type === "leave") {
-      const { userId } = parsed;
-      const index = rooms.findIndex(room => room.id === ws._roomId);
-      const room = rooms[index];
-      ws._roomId = null;
-      if (!room || !room.players.has(ws)) return;
-      room.removePlayer(ws);
-      broadcaster(room.players.keys(), ws, JSON.stringify({ type: "chat", userId, content: `User ${userId} left room` }));
-      try { ws.send(JSON.stringify({ type: "tournamentEliminated" })); ws.close(); } catch {}
-      if (room.tournamentManager && room.matchId !== undefined && room.players.size === 1) {
-        const remainingPlayer = [...room.players.values()][0];
-        room.tournamentManager.recordMatchResult(room.matchId, remainingPlayer.id, "opponentLeft");
-      }
-      if (room.players.size === 0) rooms.splice(index, 1);
-    } else if (type === "ready") {
+        const { userId } = parsed;
+        const index = rooms.findIndex(room => room.id === ws._roomId);
+        const room = rooms[index];
+        ws._roomId = null;
+        if (!room || !room.players.has(ws)) return;
+        room.removePlayer(ws);
+        try { ws.send(JSON.stringify({ type: "tournamentEliminated" })); ws.close(); } catch {}
+        if (room.tournamentManager && userId) {
+          room.tournamentManager.handleDisconnect(userId);
+        }
+        if (room.players.size === 0) rooms.splice(index, 1);
+      } else if (type === "ready") {
       const { userId } = parsed;
       const index = rooms.findIndex(room => room.id === ws._roomId);
       const room = rooms[index];

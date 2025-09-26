@@ -124,6 +124,32 @@ export class TournamentManager {
     };
   }
 
+
+  handleDisconnect(userId) {
+    const tournament = this.getTournament();
+    if (!tournament) return;
+
+    // CASE 1: Tournament not started yet
+    if (tournament.status === "pending") {
+      tournament.players = tournament.players.filter(p => p.id !== userId);
+      this.broadcastTournament();
+      return;
+    }
+
+    // CASE 2: Tournament already active
+    if (tournament.status === "active") {
+      const match = tournament.matches.find(
+        m => m.status === "pending" && (m.p1.id === userId || m.p2.id === userId)
+      );
+      if (match) {
+        const winner = match.p1.id === userId ? match.p2 : match.p1;
+        if (winner)
+          this.recordMatchResult(match.id, winner.id);
+      }
+    }
+  }
+
+
   getTournament() {
     return this.tournament;
   }
