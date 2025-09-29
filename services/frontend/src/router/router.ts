@@ -7,6 +7,9 @@ const routes: Record<string, Route> = {
     "/login": { template: "/pages/Login.html", auth: false },
     "/profile": { template: "/pages/Profile.html", auth: true },
     "/dashboard": { template: "/pages/Dashboard.html", auth: true },
+    "/local": { template: "/pages/Local.html", auth: true },
+    "/remote": { template: "/pages/Remote.html", auth: true },
+    "/ai": { template: "/pages/AI.html", auth: true },
     "/tournament": { template: "/pages/Tournament.html", auth: true },
     "/404": { template: "/pages/404.html", auth: false },
 };
@@ -82,6 +85,18 @@ async function handleLocation(): Promise<void> {
             console.log("Loading tournament page");
             const { TournamentController } = await import("/src/pages/Tournament.js");
             teardown = await TournamentController(root);
+        } else if (path === "/local") {
+            console.log("Loading local-play page");
+            const { LocalController } = await import("/src/pages/Local.js");
+            teardown = await LocalController(root);
+        } else if (path === "/remote") {
+            console.log("Loading remote-play page");
+            const { RemoteController } = await import("/src/pages/Remote.js");
+            teardown = await RemoteController(root);
+        } else if (path === "/ai") {
+            console.log("Loading ai-play page");
+            const { AIController } = await import("/src/pages/AI.js");
+            teardown = await AIController(root);
         }
     } catch (e) {
         console.error(e);

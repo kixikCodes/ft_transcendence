@@ -638,6 +638,27 @@ export const HomeController = async (root: HTMLElement) => {
 		game.applyServerState(m.state);
 	});
 
+	const localBnt = root.querySelector<HTMLButtonElement>(".local_play");
+	if (localBnt) {
+		localBnt.addEventListener('click', () => {
+			navigate("/local");
+		});
+	}
+
+	const AIBnt = root.querySelector<HTMLButtonElement>(".ai_play");
+	if (AIBnt) {
+		AIBnt.addEventListener('click', () => {
+			navigate("/ai");
+		});
+	}
+
+	const RemoteBnt = root.querySelector<HTMLButtonElement>(".remote_play");
+	if (RemoteBnt) {
+		RemoteBnt.addEventListener('click', () => {
+			navigate("/remote");
+		});
+	}
+
 	const tournamentBnt = root.querySelector<HTMLButtonElement>(".tournament_play");
 	if (tournamentBnt) {
 		tournamentBnt.addEventListener('click', () => {
