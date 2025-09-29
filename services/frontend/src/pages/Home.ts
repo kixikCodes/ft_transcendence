@@ -12,9 +12,10 @@ async function update2FAButton(userId: number, enable2faBtn: HTMLButtonElement, 
 	const userDetails = await userDetailsRes.json();
 	const mfaEnabled = userDetails?.mfa_enabled === 1;
 
-  // Remove previous click listeners
-  enable2faBtn.onclick = null;
-  const btn = enable2faBtn;
+	// Remove previous click listeners
+	enable2faBtn.onclick = null;
+	const btn = enable2faBtn;
+	message.textContent = "";
 
 	if (mfaEnabled) {
 		btn.textContent = "Disable 2FA";
@@ -30,11 +31,11 @@ async function update2FAButton(userId: number, enable2faBtn: HTMLButtonElement, 
 					body: JSON.stringify({ userId, code }),
 					credentials: "include"
 				});
-				if (res.ok) {
+				if (res.ok) { //FIXME: For some inexplicable reason, even when the response is NOT ok it still goes in this block.
 					message.classList.remove("text-pink-500");
 					message.classList.add("text-green-500");
 					message.textContent = "2FA Diabled";
-					await update2FAButton(userId, btn, qrContainer, message);
+					//await update2FAButton(userId, btn, qrContainer, message);
 				} else {
 					message.classList.remove("text-green-500");
 					message.classList.add("text-pink-500");
@@ -58,7 +59,7 @@ async function update2FAButton(userId: number, enable2faBtn: HTMLButtonElement, 
 					qrContainer.innerHTML = `<div class="text-white mb-2">
 						Scan this QR code with your Authenticator app:
 						</div><img src="${qr}" alt="2FA QR" style="max-width:220px;">`;
-          await update2FAButton(userId, btn, qrContainer, message);
+          //await update2FAButton(userId, btn, qrContainer, message);
         } else {
           qrContainer.innerHTML = `<div class="text-red-400">Failed to load QR code.</div>`;
         }

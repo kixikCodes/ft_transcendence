@@ -123,9 +123,11 @@
 
 	<div id="settingsModal" class="fixed inset-0 bg-black/60 grid place-items-center z-50 hidden">
 		<div class="bg-gray-800 border-2 border-gray-300 rounded-lg p-8 w-[350px] relative flex flex-col items-center">
-			<button id="closeSettingsBtn" class="absolute top-3 right-3 text-white bg-gray-700 border-2 border-gray-300 rounded px-3 py-1 hover:bg-teal-400 hover:border-teal-400 transition">✕</button>
-			<h2 class="text-2xl font-bold mb-4 text-white">Account Settings</h2>
-			<button id="enable2faBtn" class="mb-4 px-4 py-2 bg-teal-400 text-gray-900 rounded hover:bg-teal-500 transition">Enable 2FA</button>
+			<header class="flex items-center justify-between w-full px-4 py-3 border-b border-gray-700">
+				<h2 class="text-2xl font-bold text-white">Account Settings</h2>
+				<button id="closeSettingsBtn" class="text-gray-400 hover:text-white text-2xl ml-auto">&times;</button>
+			</header>
+			<button id="enable2faBtn" class="mb-4 mt-6 px-4 py-2 bg-teal-400 text-gray-900 rounded hover:bg-teal-500 transition">Enable 2FA</button>
 			<div id="qrContainer" class="flex flex-col items-center"></div>
 			<button id="logoutBtn" class="mb-4 px-4 py-2 bg-teal-400 text-gray-900 rounded hover:bg-teal-500 transition">Log Out</button>
 			<button id="deleteAccountBtn" class="mb-4 px-4 py-2 bg-teal-400 text-gray-900 rounded hover:bg-red-500 transition">Delete Account</button>
