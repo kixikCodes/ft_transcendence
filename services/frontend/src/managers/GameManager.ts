@@ -14,9 +14,11 @@ export class GameManager {
 	private paddleLogic!: PaddleLogic;
 	private conf!: Readonly<Derived>;
 	private settings: Settings;
+	private refresh_time: number;
 
 	constructor(settings: Settings) {
 		this.settings = settings;
+		this.refresh_time = 60;
 		this.initialize();
 	}
 
@@ -112,7 +114,11 @@ export class GameManager {
 			// update() handles the physics (paddles/ball) of non-remote players and Updates the score texture on the game map
 			// If its a remote player, the physics comes from the server.
 			// console.log("Game playing status:", this.gameStatus.playing);
-			if (this.gameStatus.playing) this.gameLogic.update();
+			this.refresh_time --;
+			if (this.refresh_time <= 0 && this.gameStatus.playing) {
+				this.gameLogic.update();
+				this.refresh_time = 2;
+			}
 			// Here the scene will be rendered again
 			this.scene.render();
 		});
