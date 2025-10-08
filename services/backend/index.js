@@ -149,11 +149,11 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
 
 		} else if (type === "join") {
 			// Join a game room
-			const room = getOrCreateRoom();
+			const room = getOrCreateRoom(parsed.roomId);
 			if (room.players.has(ws)) return;
 			room.addPlayer(userId, ws);
 			// Response to the client, which side the player is on and the current state to render the initial game state
-			ws.send(JSON.stringify({ type: "join", roomId: room.id, side: ws._side, gameConfig: room.config, state: room.state }));
+			ws.send(JSON.stringify({ type: "join", roomName: room.name, roomId: room.id, side: ws._side, gameConfig: room.config, state: room.state }));
 
 		} else if (type === "leave") {
 			// console.log(`player id: ${userId} wants to leave the channel: ${roomId}`);

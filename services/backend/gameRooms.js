@@ -6,7 +6,8 @@ export const rooms = [];
 
 export class Room {
   constructor() {
-    this.id = nextRoomId++;
+    this.id = nextRoomId ++;
+    this.name = "Default";
     this.players = new Map();
   // build config first so we can derive paddle X positions
   this.config = buildWorld();
@@ -115,7 +116,7 @@ export class Room {
   }
 }
 
-export function getOrCreateRoom() {
+export function getOrCreateRoom(name) {
   // const index = rooms.findIndex(room => room.id === ws._roomId);
   // const room = rooms[index];
   let room = rooms.length > 0 ? rooms[rooms.length - 1] : null;
@@ -123,5 +124,6 @@ export function getOrCreateRoom() {
     room = new Room();
     rooms.push(room);
   }
+  room.name = name;
   return room;
 }
