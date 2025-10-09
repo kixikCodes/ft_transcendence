@@ -16,17 +16,17 @@ export class GameManager {
 	private conf!: Readonly<Derived>;
 	private settings: Settings;
 	private refresh_time: number;
-	private soundManager: SoundManager;
+	public soundManager: SoundManager;
 
 	constructor(settings: Settings) {
 		this.settings = settings;
 		this.refresh_time = 60;
+		this.soundManager = new SoundManager();
 		this.initialize();
 	}
 
 	public async initialize() {
 		// Initialize the game status by fetching the initial state from the server to ensure that the game state is consistent between server and client
-		this.soundManager = new SoundManager();
 		this.gameStatus = {
 			scoreL: 0,
 			scoreR: 0,
@@ -79,7 +79,6 @@ export class GameManager {
 		// Start the game loop which updates the game state and renders the scene
 		this.gameLogic.setConfig(this.conf);
 		this.paddleLogic.setConfig(this.conf);
-		this.soundManager.playTheme();
 		this.startGameLoop();
 	}
 
@@ -228,7 +227,6 @@ export class GameManager {
 	public stopGame(): void {
 		this.resetServerState();
 		this.gameLogic.resetTempStates();
-		this.soundManager.stopTheme();
 		this.gameLogic.updateScores();
 		this.scene.render();
 	}
