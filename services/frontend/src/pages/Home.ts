@@ -295,9 +295,6 @@ const createRequestsModal = (root: HTMLElement) => {
       <div id="requests-body" class="p-4 overflow-y-auto">
         <ul id="request-list-modal" class="space-y-2 text-white"></ul>
       </div>
-      <footer class="p-3 border-t border-gray-700 text-right">
-        <button class="modal-close2 px-3 py-1 border-2 border-gray-300 rounded bg-gray-700 text-white hover:bg-teal-400 hover:border-teal-400">Close</button>
-      </footer>
     </div>
   `;
   // Append the modal to the body to overlay the page

@@ -1,3 +1,9 @@
+:root {
+  --main_text: #ffffff;
+  --text: #cbd5e1;
+
+}
+
 /* Styling of a usercard. Grid with 5 columns:
 1: Userpic, name and level
 2: Space
@@ -15,7 +21,8 @@
     align-items: center;
     column-gap: 16px;
     overflow: visible;
-	border: 2px solid #cbd5e1; /* Light gray border */
+	border: 2px solid #cbd5e1;
+	background-color: #374151;
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 
@@ -33,8 +40,7 @@
     width: 56px;
     height: 56px;
     border-radius: 50%;
-    border: 2px solid #3b82f6; /* Blue border */
-    background: #e5e7eb;
+    border: 2px solid #cbd5e1;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -78,6 +84,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+	color: var(--main_text);
 }
 
 .usercard_level {
@@ -90,44 +97,15 @@
     height: 34px;
     padding: 0 12px;
     border-radius: 10px;
-    border: 1px solid var(--border);
-    background: #fff;
     color: var(--main_text);
     font-weight: 600;
     cursor: pointer;
 }
 
-/* Add Friend button: filled blue */
-.usercard[data-status="ok"] [data-action="add-friend"] {
-    background: #2563eb;
-    border-color: #2563eb;
-    color: #fff;
-}
-
-/* Add Friend button: outlined blue when friend */
-.usercard[data-status="friend"] [data-action="unfriend"] {
-    border: 2px solid #2563eb;
-    background: #fff;
-    color: #2563eb;
-}
-
 /* Block button: outlined red */
 .usercard [data-action="block"] {
     border: 2px solid #dc2626;
-    background: #fff;
     color: #dc2626;
-}
-
-/* Add friend button */
-.btn--primary {
-    background: var(--add_friend);
-    border-color: var(--add_friend);
-    color: #fff;
-}
-
-/* Block button */
-.btn--ghost {
-    background: #fff;
 }
 
 /* Usercard of a blocked user is muted */
@@ -157,6 +135,28 @@ hidden: Add Friend, Unfriend, Block
 .usercard[data-status="blocked"] [data-action="unfriend"],
 .usercard[data-status="blocked"] [data-action="block"] {
     display: none;
+}
+
+/* If the data-status of the usercard is friend:
+visible: Remove Friend (we reuse the add-friend button), Block, badge(FRIEND)
+hidden: Unblock, Unfriend (unused)
+*/
+.usercard[data-status="friend"] [data-action="unblock"],
+.usercard[data-status="friend"] [data-action="unfriend"] {
+    display: none;
+}
+
+/* Style the friend-toggle button when already friends: outlined blue */
+.usercard[data-status="friend"] [data-action="add-friend"] {
+    background: transparent;
+    border: 2px solid #2563eb;
+    color: #2563eb;
+}
+
+/* Ensure the regular add-friend (not-friend) stays filled blue */
+.usercard[data-status="ok"] [data-action="add-friend"] {
+    background: #2563eb;
+    border-color: #2563eb;
 }
 
 .usercard[data-status="blocked_by_me"] [data-action="unblock"] {
