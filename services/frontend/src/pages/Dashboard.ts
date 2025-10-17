@@ -119,46 +119,62 @@ const getUsers = async () => {
 const sendRequest = async (userId: number, myUserId: number | undefined) => {
   const res = await fetch(`/api/users/${myUserId}/sendFriendRequest`, {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ friendId: userId })
   });
   if (!res.ok) {
-    console.error("Failed to add friend:", res.statusText);
+    const text = await res.text().catch(() => res.statusText);
+    console.error("Failed to add friend:", res.status, text);
+    return false;
   }
+  return true;
 };
 
 const unfriend = async (userId: number, myUserId: number | undefined) => {
   const res = await fetch(`/api/users/${myUserId}/unfriend`, {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ friendId: userId })
   });
   if (!res.ok) {
-    console.error("Failed to unfriend user:", res.statusText);
+    const text = await res.text().catch(() => res.statusText);
+    console.error("Failed to unfriend user:", res.status, text);
+    return false;
   }
+  return true;
 };
 
 const block = async (userId: number, myUserId: number | undefined) => {
   const res = await fetch(`/api/users/${myUserId}/block`, {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ blockId: userId })
   });
   if (!res.ok) {
-    console.error("Failed to block user:", res.statusText);
+    const text = await res.text().catch(() => res.statusText);
+    console.error("Failed to block user:", res.status, text);
+    return false;
   }
+  return true;
 };
 
 const unblock = async (userId: number, myUserId: number | undefined) => {
   console.log("Unblock user function called with:", userId, myUserId);
   const res = await fetch(`/api/users/${myUserId}/unblock`, {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ unblockId: userId })
   });
   if (!res.ok) {
-    console.error("Failed to unblock user:", res.statusText);
+    const text = await res.text().catch(() => res.statusText);
+    console.error("Failed to unblock user:", res.status, text);
+    return false;
   }
+  return true;
 };
 
 export const mountDashboard = async (root: HTMLElement) => {
@@ -227,10 +243,10 @@ export const mountDashboard = async (root: HTMLElement) => {
         <div class="badge"></div>
 
         <div class="usercard_actions">
-          <button class="btn btn--primary" data-action="add-friend">Add Friend</button>
-          <button class="btn btn--ghost" data-action="unfriend">Unfriend</button>
-          <button class="btn btn--ghost" data-action="block">Block</button>
-          <button class="btn btn--ghost" data-action="unblock">Unblock</button>
+          <button class="btn" data-action="add-friend">Add Friend</button>
+          <button class="btn" data-action="unfriend">Unfriend</button>
+          <button class="btn" data-action="block">Block</button>
+          <button class="btn" data-action="unblock">Unblock</button>
         </div>
       </li>`;
 
@@ -240,13 +256,36 @@ export const mountDashboard = async (root: HTMLElement) => {
       const blockBtn = li.querySelector('[data-action="block"]') as HTMLButtonElement;
       const unblockBtn = li.querySelector('[data-action="unblock"]') as HTMLButtonElement;
 
+      // Make the "add-friend" button behave as a toggle:
+      // - when status === "friend" => show "Remove Friend" (outlined)
+      // - otherwise => show "Add Friend" (filled)
+      if (user.status === "friend") {
+        addFriendBtn.textContent = "Remove Friend";
+        // Does not work.
+      } else {
+        addFriendBtn.textContent = "Add Friend";
+      }
+
       addFriendBtn.addEventListener("click", async () => {
-          console.log("Sending friend request to: ", user.id);
-          await sendRequest(user.id, myUser?.id);
-          users = await getUsers();
-          renderUserCards(usersListEl, users, userId, myUser);
+          console.log("Toggling friend for: ", user.id, " current status:", user.status);
+          addFriendBtn.disabled = true;
+          const wasFriend = user.status === "friend";
+          const ok = wasFriend ? await unfriend(user.id, myUser?.id) : await sendRequest(user.id, myUser?.id);
+          if (!ok) {
+            addFriendBtn.disabled = false;
+            return;
+          }
+
+          if (wasFriend) {
+            user.status = "ok";
+            renderUserCards(usersListEl, users, userId, myUser);
+          } else {
+            addFriendBtn.textContent = "Request Sent";
+          }
       });
 
+      // Keep existing handlers (they will be hidden by CSS or redundant),
+      // but leave them to avoid breaking other flows.
       unfriendBtn.addEventListener("click", async () => {
           console.log("Unfriend user: ", user.id);
           await unfriend(user.id, myUser?.id);

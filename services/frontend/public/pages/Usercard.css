@@ -102,34 +102,10 @@
     cursor: pointer;
 }
 
-/* Add Friend button: filled blue */
-.usercard[data-status="ok"] [data-action="add-friend"] {
-    background: #2563eb;
-    border-color: #2563eb;
-}
-
-/* Add Friend button: outlined blue when friend */
-.usercard[data-status="friend"] [data-action="unfriend"] {
-    border: 2px solid #2563eb;
-    color: #2563eb;
-}
-
 /* Block button: outlined red */
 .usercard [data-action="block"] {
     border: 2px solid #dc2626;
     color: #dc2626;
-}
-
-/* Add friend button */
-.btn--primary {
-    background: var(--add_friend);
-    border-color: var(--add_friend);
-    color: #fff;
-}
-
-/* Block button */
-.btn--ghost {
-    background: #fff;
 }
 
 /* Usercard of a blocked user is muted */
@@ -159,6 +135,28 @@ hidden: Add Friend, Unfriend, Block
 .usercard[data-status="blocked"] [data-action="unfriend"],
 .usercard[data-status="blocked"] [data-action="block"] {
     display: none;
+}
+
+/* If the data-status of the usercard is friend:
+visible: Remove Friend (we reuse the add-friend button), Block, badge(FRIEND)
+hidden: Unblock, Unfriend (unused)
+*/
+.usercard[data-status="friend"] [data-action="unblock"],
+.usercard[data-status="friend"] [data-action="unfriend"] {
+    display: none;
+}
+
+/* Style the friend-toggle button when already friends: outlined blue */
+.usercard[data-status="friend"] [data-action="add-friend"] {
+    background: transparent;
+    border: 2px solid #2563eb;
+    color: #2563eb;
+}
+
+/* Ensure the regular add-friend (not-friend) stays filled blue */
+.usercard[data-status="ok"] [data-action="add-friend"] {
+    background: #2563eb;
+    border-color: #2563eb;
 }
 
 .usercard[data-status="blocked_by_me"] [data-action="unblock"] {
