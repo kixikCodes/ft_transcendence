@@ -249,6 +249,42 @@ export default async function (fastify, options) {
         }
     });
 
+    // Increment wins for a user (called after a match win)
+    // This route requires the user to be authenticated and only allows the user to increment their own wins
+    fastify.post("/api/users/:id/win", async (request, reply) => {
+        const targetId = parseInt(request.params.id);
+        if (!targetId) {
+            return reply.code(400).send({ error: "Invalid user ID" });
+        }
+
+        try {
+            // Verify JWT from cookie
+            const token = request.cookies?.auth;
+            if (!token) throw new Error("Not authenticated");
+            const payload = fastify.jwt.verify(token);
+            const requesterId = payload.sub;
+
+            if (requesterId !== targetId) {
+                return reply.code(403).send({ error: "Forbidden: can only increment your own wins" });
+            }
+
+            // Increment wins atomically
+            db.run("UPDATE users SET wins = wins + 1 WHERE id = ?", [targetId], function (err) {
+                if (err) return reply.code(500).send({ error: err.message });
+                if (this.changes === 0) return reply.code(404).send({ error: "User not found" });
+                reply.send({ success: true });
+            });
+            db.run("UPDATE users SET level = FLOOR((-1 + SQRT(8 * wins + 9)) / 2) WHERE id = ?;", [targetId], function (err) {
+                if (err) return reply.code(500).send({ error: err.message });
+                if (this.changes === 0) return reply.code(404).send({ error: "User not found" });
+                reply.send({ success: true });
+            });
+        } catch (err) {
+            console.error("Error incrementing wins:", err);
+            return reply.code(401).send({ error: "Not authenticated" });
+        }
+    });
+
 	// AUTH API ENDPOINTS //
 
 	fastify.post("/api/register", (request, reply) => {
