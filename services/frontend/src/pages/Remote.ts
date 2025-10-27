@@ -37,11 +37,11 @@ export const RemoteController = (root: HTMLElement) => {
     game.applyServerState(m.state);
   });
 
-  ws.on("join", (m: { type: "join"; roomId: string; side: string; gameConfig: Derived; state: ServerState }) => {
+  ws.on("join", (m: { type: "join"; roomId: string; roomName: string; side: string; gameConfig: Derived; state: ServerState }) => {
     console.log("Joined room:", m.roomId, "as", m.side);
     game.setConfig(m.gameConfig);
     game.applyServerState(m.state);
-    tournamentStatus.textContent = `Joined ${m.roomId} as ${m.side === "left" ? "P1 (left)" : "P2 (right)"}`;
+    tournamentStatus.textContent = `Joined ${m.roomName} as ${m.side === "left" ? "P1 (left)" : "P2 (right)"}`;
   });
 
   ws.on("reset", () => {

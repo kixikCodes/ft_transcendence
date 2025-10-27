@@ -156,11 +156,11 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
 
 		} else if (type === "join") {
 			// Join a game room
-			const room = getOrCreateRoom();
+			const room = getOrCreateRoom(parsed.roomId);
 			if (room.players.has(ws)) return;
 			room.addPlayer(userId, ws);
 			// Response to the client, which side the player is on and the current state to render the initial game state
-			ws.send(JSON.stringify({ type: "join", roomId: room.id, side: ws._side, gameConfig: room.config, state: room.state }));
+			ws.send(JSON.stringify({ type: "join", roomName: room.name, roomId: room.id, side: ws._side, gameConfig: room.config, state: room.state }));
 
 		} else if (type === "leave") {
 			// console.log(`player id: ${userId} wants to leave the channel: ${roomId}`);
@@ -311,7 +311,7 @@ export function loop(room) {
 		room.state.started = false;
 
 		const winnerSide = room.state.scoreL >= 5 ? "left" : "right";
-		const loserSide = winnerSide === "left" ? "left" : "right";
+		const loserSide = winnerSide === "left" ? "right" : "left";
 
 		// Find winner and loser entries (socket + player)
 		const winnerEntry = [...room.players.entries()].find(
@@ -325,11 +325,32 @@ export function loop(room) {
 		const loserSock = loserEntry?.[0];
 		const loser = loserEntry?.[1];
 
-		if (winner && loser && room.tournamentManager && room.matchId !== undefined) {
-			room.tournamentManager.recordMatchResult(room.matchId, winner.userId);
-			const t = room.tournamentManager.getTournament();
-			if (t.status === "completed")
-				delete tournaments[t.id];
+		// Update wins/losses in DB for real matches between authenticated users
+		if (winner && loser) {
+			try {
+				console.log("\x1b[31m Winner: ", winner, "\nLoser: ", loser, " \x1b[0m");
+				db.run("UPDATE users SET wins = wins + 1 WHERE id = ?", [winner.userId], function (err) {
+					if (err) console.error("Failed to increment winner wins:", err.message);
+					else console.log(`Incremented wins for user ${winner.userId}`);
+				});
+				db.run("UPDATE users SET level = FLOOR((-1 + SQRT(8 * wins + 9)) / 2) WHERE id = ?;", [winner.userId], function (err) {
+					if (err) console.error("Failed to set winner level:", err.message);
+					else console.log(`Calculated level for user ${winner.userId}`);
+				});
+				db.run("UPDATE users SET losses = losses + 1 WHERE id = ?", [loser.userId], function (err) {
+					if (err) console.error("Failed to increment loser losses:", err.message);
+					else console.log(`Incremented losses for user ${loser.userId}`);
+				});
+			} catch (e) {
+				console.error("Error updating user win/loss:", e);
+			}
+
+			if (room.tournamentManager && room.matchId !== undefined) {
+				room.tournamentManager.recordMatchResult(room.matchId, winner.userId);
+				const t = room.tournamentManager.getTournament();
+				if (t.status === "completed")
+					delete tournaments[t.id];
+			}
 		}
 	}
 

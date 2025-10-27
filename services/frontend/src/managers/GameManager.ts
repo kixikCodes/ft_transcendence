@@ -110,20 +110,25 @@ export class GameManager {
 	}
 
 	private startGameLoop(): void {
+		let		last_time = performance.now();
+		let		accumulator = 0;
+		const	timestep = 14;
+
 		this.sceneBuilder.getEngine().runRenderLoop(() => {
-			// Running is set on true, if the game engine is alive
 			if (!this.gameStatus.running) return;
-			// If both players are ready.
-			// In case of a remote player, it is ready, if 2 joined the room and clicked on ready.
-			// update() handles the physics (paddles/ball) of non-remote players and Updates the score texture on the game map
-			// If its a remote player, the physics comes from the server.
-			// console.log("Game playing status:", this.gameStatus.playing);
-			this.refresh_time --;
-			if (this.refresh_time <= 0 && this.gameStatus.playing) {
-				this.gameLogic.update();
-				this.refresh_time = 2;
+
+			const now = performance.now();
+			const delta = now - last_time;
+			last_time = now;
+			accumulator += delta;
+
+			while (accumulator >= timestep) {
+				if (this.gameStatus.playing) {
+					this.gameLogic.update();
+				}
+				accumulator -= timestep;
 			}
-			// Here the scene will be rendered again
+
 			this.scene.render();
 		});
 	}
