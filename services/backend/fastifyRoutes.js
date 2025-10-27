@@ -4,7 +4,7 @@ import { pipeline } from "node:stream/promises";
 import bcrypt from 'bcryptjs';
 import { authenticator } from 'otplib';
 import qrcode from 'qrcode';
-import { getUserIdFromRequest, INVALID_USER } from './utils.js';
+import { checkAuthentication, checkAuthorization } from './utils.js';
 
 export default async function (fastify, options) {
     const db = options.db;
@@ -12,7 +12,7 @@ export default async function (fastify, options) {
 	// USERS API ENDPOINTS //
 
     // Get all users (without password_hash and totp_secret) from the db
-    fastify.get("/api/users", async (request, reply) => {
+    fastify.get("/api/users", { preHandler: checkAuthentication }, async (request, reply) => {
         let params = [];
         const fields = "id, username, wins, losses, level, created_at, status";
         let sql = `SELECT ${fields} FROM users ORDER BY created_at DESC`;
@@ -26,7 +26,7 @@ export default async function (fastify, options) {
     });
 
     // Get a user by userId from the db (without password_hash and totp_secret)
-    fastify.get("/api/users/:id", async (request, reply) => {
+    fastify.get("/api/users/:id", { preHandler: checkAuthentication }, async (request, reply) => {
         console.log("Received request for user id:", request.params.id);
         const userId = parseInt(request.params.id);
         if (!userId) {
@@ -47,7 +47,7 @@ export default async function (fastify, options) {
     // Accept a friend request by requestId. RequestId is the id of the row in the friend_requests table
     // This will add a new row to the friends table for both users
     // And remove the request row from the friend_requests table
-    fastify.post("/api/friendRequests/:id/accept", async (request, reply) => {
+    fastify.post("/api/friendRequests/:id/accept", { preHandler: checkAuthentication }, async (request, reply) => {
         const requestId = parseInt(request.params.id);
         if (!requestId) {
             return reply.code(400).send({ error: "Invalid request ID" });
@@ -74,7 +74,7 @@ export default async function (fastify, options) {
 
     // Decline a friend request by requestId.
     // This will remove the request row from the friend_requests table
-    fastify.post("/api/friendRequests/:id/decline", async (request, reply) => {
+    fastify.post("/api/friendRequests/:id/decline", { preHandler: checkAuthentication }, async (request, reply) => {
         const requestId = parseInt(request.params.id);
         if (!requestId) {
             return reply.code(400).send({ error: "Invalid request ID" });
@@ -89,11 +89,9 @@ export default async function (fastify, options) {
     });
 
     // Get the friend requests for a user by userId from the db
-    fastify.get("/api/users/:id/friendRequests", async (request, reply) => {
+    fastify.get("/api/users/:id/friendRequests", { preHandler: checkAuthorization }, async (request, reply) => {
         const userId = parseInt(request.params.id);
-        if (!userId) {
-            return reply.code(400).send({ error: "Invalid user ID" });
-        }
+
         try {
             const rows = await fetchAll(db, `SELECT * FROM friend_requests WHERE receiver_id = ?`, [userId]);
             console.log("Fetched friend requests: ", rows);
@@ -106,13 +104,13 @@ export default async function (fastify, options) {
     });
 
     // This will send a friend request to another user
-    fastify.post("/api/users/:id/sendFriendRequest", async (request, reply) => {
+    fastify.post("/api/users/:id/sendFriendRequest", { preHandler: checkAuthorization }, async (request, reply) => {
         // Extract userId (the user which is sending the friend request) from the URL parameters
         const userId = parseInt(request.params.id);
         // Extract friendId (where the request should go to) from the request body
         const { friendId } = request.body;
-        if (!friendId || !userId) {
-            return reply.code(400).send({ error: "Invalid user ID or friend ID" });
+        if (!friendId) {
+            return reply.code(400).send({ error: "Invalid friend ID" });
         }
         console.log("Sending friend request from user:", userId, "to user:", friendId);
         // Check if there is already a friend request between these two users
@@ -155,11 +153,11 @@ export default async function (fastify, options) {
     // This will unfriend a user by removing the row from the friends table
     // Row 1 (user_id = userId, friend_id = friendId)
     // Row 2 (user_id = friendId, friend_id = userId)
-    fastify.post("/api/users/:id/unfriend", async (request, reply) => {
+    fastify.post("/api/users/:id/unfriend", { preHandler: checkAuthorization }, async (request, reply) => {
         const userId = parseInt(request.params.id);
         const { friendId } = request.body;
-        if (!friendId || !userId) {
-            return reply.code(400).send({ error: "Invalid user ID or friend ID" });
+        if (!friendId) {
+            return reply.code(400).send({ error: "Invalid friend ID" });
         }
         console.log("Unfriending user: ", friendId, "for user: ", userId);
         try {
@@ -172,11 +170,9 @@ export default async function (fastify, options) {
     });
 
     // Get the friends for a user by userId from the db
-    fastify.get("/api/users/:id/friends", async (request, reply) => {
+    fastify.get("/api/users/:id/friends", { preHandler: checkAuthorization }, async (request, reply) => {
         const userId = parseInt(request.params.id);
-        if (!userId) {
-            return reply.code(400).send({ error: "Invalid user ID" });
-        }
+
         try {
             const rows = await fetchAll(db, `SELECT * FROM friends WHERE user_id = ?`, [userId]);
             console.log("Fetched friends: ", rows);
@@ -189,11 +185,9 @@ export default async function (fastify, options) {
 
     // Get the blocks for a user by userId from the db
     // users that this user has blocked
-    fastify.get("/api/users/:id/blocks", async (request, reply) => {
+    fastify.get("/api/users/:id/blocks", { preHandler: checkAuthorization }, async (request, reply) => {
         const userId = parseInt(request.params.id);
-        if (!userId) {
-            return reply.code(400).send({ error: "Invalid user ID" });
-        }
+
         try {
             const rows = await fetchAll(db, `SELECT * FROM blocks WHERE user_id = ?`, [userId]);
             console.log("Fetched blocks: ", rows);
@@ -205,11 +199,9 @@ export default async function (fastify, options) {
     });
 
     // Get the users that have blocked this user
-    fastify.get("/api/users/:id/blockedBy", async (request, reply) => {
+    fastify.get("/api/users/:id/blockedBy", { preHandler: checkAuthorization }, async (request, reply) => {
         const userId = parseInt(request.params.id);
-        if (!userId) {
-            return reply.code(400).send({ error: "Invalid user ID" });
-        }
+
         try {
             const rows = await fetchAll(db, `SELECT * FROM blocks WHERE blocked_user_id = ?`, [userId]);
             console.log("Fetched blockedBy: ", rows);
@@ -221,11 +213,11 @@ export default async function (fastify, options) {
     });
 
     // Adding a block Id to the user's block list
-    fastify.post("/api/users/:id/block", async (request, reply) => {
+    fastify.post("/api/users/:id/block", { preHandler: checkAuthorization }, async (request, reply) => {
         const userId = parseInt(request.params.id);
         const { blockId } = request.body;
-        if (!blockId || !userId) {
-            return reply.code(400).send({ error: "Invalid user ID or block ID" });
+        if (!blockId) {
+            return reply.code(400).send({ error: "Invalid block ID" });
         }
         console.log("Blocking user: ", blockId, "for user: ", userId);
         try {
@@ -237,11 +229,12 @@ export default async function (fastify, options) {
         }
     });
 
-    fastify.post("/api/users/:id/unblock", async (request, reply) => {
+    fastify.post("/api/users/:id/unblock", { preHandler: checkAuthorization }, async (request, reply) => {
         const userId = parseInt(request.params.id);
+
         const { unblockId } = request.body;
-        if (!unblockId || !userId) {
-            return reply.code(400).send({ error: "Invalid user ID or unblock ID" });
+        if (!unblockId) {
+            return reply.code(400).send({ error: "Invalid unblock ID" });
         }
         console.log("Unblocking user: ", unblockId, "for user: ", userId);
         try {
@@ -254,38 +247,20 @@ export default async function (fastify, options) {
 
     // Increment wins for a user (called after a match win)
     // This route requires the user to be authenticated and only allows the user to increment their own wins
-    fastify.post("/api/users/:id/win", async (request, reply) => {
+    fastify.post("/api/users/:id/win", { preHandler: checkAuthorization }, async (request, reply) => {
         const targetId = parseInt(request.params.id);
-        if (!targetId) {
-            return reply.code(400).send({ error: "Invalid user ID" });
-        }
 
-        try {
-            // Verify JWT from cookie
-            const token = request.cookies?.auth;
-            if (!token) throw new Error("Not authenticated");
-            const payload = fastify.jwt.verify(token);
-            const requesterId = payload.sub;
-
-            if (requesterId !== targetId) {
-                return reply.code(403).send({ error: "Forbidden: can only increment your own wins" });
-            }
-
-            // Increment wins atomically
-            db.run("UPDATE users SET wins = wins + 1 WHERE id = ?", [targetId], function (err) {
-                if (err) return reply.code(500).send({ error: err.message });
-                if (this.changes === 0) return reply.code(404).send({ error: "User not found" });
-                reply.send({ success: true });
-            });
-            db.run("UPDATE users SET level = FLOOR((-1 + SQRT(8 * wins + 9)) / 2) WHERE id = ?;", [targetId], function (err) {
-                if (err) return reply.code(500).send({ error: err.message });
-                if (this.changes === 0) return reply.code(404).send({ error: "User not found" });
-                reply.send({ success: true });
-            });
-        } catch (err) {
-            console.error("Error incrementing wins:", err);
-            return reply.code(401).send({ error: "Not authenticated" });
-        }
+        // Increment wins atomically
+        db.run("UPDATE users SET wins = wins + 1 WHERE id = ?", [targetId], function (err) {
+            if (err) return reply.code(500).send({ error: err.message });
+            if (this.changes === 0) return reply.code(404).send({ error: "User not found" });
+            reply.send({ success: true });
+        });
+        db.run("UPDATE users SET level = FLOOR((-1 + SQRT(8 * wins + 9)) / 2) WHERE id = ?;", [targetId], function (err) {
+            if (err) return reply.code(500).send({ error: err.message });
+            if (this.changes === 0) return reply.code(404).send({ error: "User not found" });
+            reply.send({ success: true });
+        });
     });
 
 	// AUTH API ENDPOINTS //
@@ -360,7 +335,6 @@ export default async function (fastify, options) {
 
 	// Verify 2FA code and issue proper JWT
 	fastify.post("/api/verify-2fa", (request, reply) => {
-		console.log("\nReceived /api/verify-2fa request");
 		const { code, tempToken } = request.body;
 		if (!code || !tempToken) {
 			return reply.code(400).send({ error: "Missing fields" });
@@ -409,8 +383,8 @@ export default async function (fastify, options) {
 		);
 	});
 
-	fastify.get("/api/2fa-setup", (req, reply) => {
-		const userId = req.query.userId;
+	fastify.get("/api/users/:id/2fa-setup", { preHandler: checkAuthorization }, (request, reply) => {
+		const userId = parseInt(request.params.id);
 		db.get("SELECT * FROM users WHERE id = ?",
 			[userId],
 			async (err, user) => {
@@ -431,9 +405,10 @@ export default async function (fastify, options) {
 		);
 	});
 
-	fastify.post("/api/disable-2fa", async (request, reply) => {
-		const { userId, code } = request.body;
-		if (!userId || !code)
+	fastify.post("/api/users/:id/disable-2fa", { preHandler: checkAuthorization }, async (request, reply) => {
+		const { code } = request.body;
+        const userId = parseInt(request.params.id);
+		if (!code)
 			return reply.code(400).send({ error: "Missing fields" });
 
 		db.get("SELECT * FROM users WHERE id = ?", [userId], (err, user) => {
@@ -470,13 +445,14 @@ export default async function (fastify, options) {
 		}
 	});
 
-	fastify.post("/api/logout", (request, reply) => {
+	fastify.post("/api/logout", { preHandler: checkAuthentication }, (request, reply) => {
 		reply.clearCookie("auth", { path: "/" });
 		reply.send({ ok: true });
 	});
 
-	fastify.post("/api/delete-account", (request, reply) => {
-		const { userId, password } = request.body;
+	fastify.delete("/api/users/:id", { preHandler: checkAuthorization }, (request, reply) => {
+		const { password } = request.body;
+        const userId = parseInt(request.params.id);
 
 		db.get("SELECT * FROM users WHERE id = ?",
 			[userId],
@@ -501,30 +477,22 @@ export default async function (fastify, options) {
 		);
 	});
 
-	fastify.post("/api/users/:id/change-pfp", async (request, reply) => {
-		const requestUserId = parseInt(request.params.id);
-		const tokenUserId = getUserIdFromRequest(request, fastify);
-		if (requestUserId == tokenUserId) {
-  			const options = { limits: { fileSize: 10_000_000 } };
-			const data = await request.file(options);
-			if (data.mimetype.startsWith("image/")) {
-  				await pipeline(data.file, fs.createWriteStream(`data/public/user_pfps/${tokenUserId}`));
-				reply.send();
-			} else {
-				reply.code(400).send({ error: "Wrong file format" });
-			}
-		} else {
-			reply.code(401).send({ error: "Not Authenticated" });
-		}
+	fastify.post("/api/users/:id/change-pfp", { preHandler: checkAuthorization }, async (request, reply) => {
+        const options = { limits: { fileSize: 10_000_000 } };
+        const data = await request.file(options);
+        const userId = parseInt(request.params.id);
+
+        if (data.mimetype.startsWith("image/")) {
+            await pipeline(data.file, fs.createWriteStream(`data/public/user_pfps/${userId}`));
+            reply.send();
+        } else {
+            reply.code(400).send({ error: "Wrong file format" });
+        }
 	});
 
-	fastify.get("/api/users/:id/pfp", (request, reply) => {
-		const requestUserId = parseInt(request.params.id);
-		const tokenUserId = getUserIdFromRequest(request, fastify);
-		if (tokenUserId != INVALID_USER) {
-			reply.sendFile(`user_pfps/${requestUserId}`);
-		} else {
-			reply.code(401).send({ error: "Not Authenticated" });
-		}
+	fastify.get("/api/users/:id/pfp", { preHandler: checkAuthentication }, (request, reply) => {
+		const userId = parseInt(request.params.id);
+        console.log("fecthing pfp");
+		reply.sendFile(`user_pfps/${userId}`);
 	});
 };

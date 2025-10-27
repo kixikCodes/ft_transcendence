@@ -23,10 +23,10 @@ async function update2FAButton(userId: number, enable2faBtn: HTMLButtonElement, 
 			btn.disabled = true;
 			btn.textContent = "Disabling...";
 			try {
-				const res = await fetch(`/api/disable-2fa`, {
+				const res = await fetch(`/api/users/${userId}/disable-2fa`, {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ userId, code }),
+					body: JSON.stringify({ code }),
 					credentials: "include"
 				});
 
@@ -66,7 +66,7 @@ async function update2FAButton(userId: number, enable2faBtn: HTMLButtonElement, 
 			btn.textContent = "Loading...";
 			qrContainer.innerHTML = "";
 			try {
-				const res = await fetch(`/api/2fa-setup?userId=${userId}`);
+				const res = await fetch(`/api/users/${userId}/2fa-setup`);
 				if (res.ok) {
 					const { qr } = await res.json();
 					qrContainer.innerHTML = `<div class="text-white mb-2">
@@ -772,10 +772,10 @@ export const HomeController = async (root: HTMLElement) => {
 			const password = deletePasswordInput.value.trim();
 			if (password) {
 				try {
-					const res = await fetch(`/api/delete-account`, {
-						method: "POST",
+					const res = await fetch(`/api/users/${myUserId}`, {
+						method: "DELETE",
 						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ userId: myUserId, password }),
+						body: JSON.stringify({ password }),
 						credentials: "include"
 					});
 					if (res.ok)

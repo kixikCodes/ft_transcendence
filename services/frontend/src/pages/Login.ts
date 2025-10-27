@@ -5,7 +5,7 @@ export class UserManager {
 	private currentUser: ApiUser | null = null; // Not used right now but good to have.
 
 	async register(username: string, email: string, password: string): Promise<{ id: number, username: string, email: string } | null> {
-		const res = await fetch(`https://${location.host}/api/register`, {
+		const res = await fetch(`/api/register`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ username, email, password }),
@@ -17,7 +17,7 @@ export class UserManager {
 	}
 
 	async login(username: string, password: string): Promise<{ tempTok: string, mfa: boolean } | null> {
-		const res = await fetch(`https://${location.host}/api/login`, {
+		const res = await fetch(`/api/login`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ username, password }),
@@ -33,7 +33,7 @@ export class UserManager {
 	}
 
 	async verify2FA(code: string, tempToken: string): Promise<boolean> {
-		const res = await fetch(`https://${location.host}/api/verify-2fa`, {
+		const res = await fetch(`/api/verify-2fa`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ code, tempToken }),
@@ -46,7 +46,7 @@ export class UserManager {
 	}
 
 	async loadUser(): Promise<ApiUser | null> {
-		const res = await fetch(`https://${location.host}/api/me`, {
+		const res = await fetch(`/api/me`, {
 			credentials: "include"
 		});
 		if (!res.ok) {
@@ -59,7 +59,7 @@ export class UserManager {
 	}
 
 	async logout() {
-		await fetch(`https://${location.host}/api/logout`, {
+		await fetch(`/api/logout`, {
 			method: "POST",
 			credentials: "include"
 		});
