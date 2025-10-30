@@ -160,6 +160,6 @@ export const mountLogin = (root: HTMLElement) => {
 	const userManager = new UserManager();
 	new Login(root, userManager).init();
 	return () => {
-		// No logout on teardown - user should stay logged in when navigating away from login page
+		// No logout on teardown because the user would be logged out unintentionally.
 	};
 }

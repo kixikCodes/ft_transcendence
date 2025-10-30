@@ -320,6 +320,7 @@ const prepareChatModal = async () => {
   const modal = document.getElementById("chat-modal")! as HTMLDivElement;
   const closeBtn = document.getElementById("chat-close")! as HTMLButtonElement;
   const form = document.getElementById("chat-form")! as HTMLFormElement;
+  const inviteBtn = document.getElementById("chat-invite-btn")! as HTMLButtonElement;
 
   // Hide it if user clicks the close button
   const hide = () => modal.classList.add("hidden");
@@ -354,39 +355,104 @@ const prepareChatModal = async () => {
     input.value = "";
     input.focus();
   });
+
+  inviteBtn.addEventListener("click", () => {
+    if (!currentChat) {
+      return;
+    }
+    
+    const roomId = crypto.randomUUID();
+    
+    // Disable button temporarily
+    inviteBtn.disabled = true;
+    
+    // Send game invitation to the chatter peer
+    try {
+      ws.send({
+        type: "gameInvite",
+        to: currentChat.peerId,
+        roomId: roomId,
+        inviterName: ""
+      });
+      
+      // Show invitation sent message
+      appendChatMsg(`Game invitation sent!`, true);
+      // Re-enable button after 2 seconds
+      setTimeout(() => {
+        inviteBtn.disabled = false;
+        inviteBtn.textContent = "Invite";
+      }, 2000);
+      
+    } catch (err) {
+      inviteBtn.disabled = false;
+      inviteBtn.textContent = "Invite";
+    }
+  });
 };
 
 // Appends a chat message to the chat
 // Will be called when the user sends a message (mine: true)
 // and when a message is received from the server
-const appendChatMsg = (text: string, mine?: boolean, fromName?: string) => {
+const appendChatMsg = (text: string, mine?: boolean, fromName?: string, gameInvite?: { roomId: string, inviterName: string }) => {
   const history = document.getElementById("chat-history")!;
 
-  // The message container
+  // Create message container
   const msgContainer = document.createElement("div");
-  // Tailwind: margin auto left/right, text align left/right
   msgContainer.className = `${mine ? "ml-auto text-right" : "mr-auto text-left"}`;
 
-  // The message
-  // Tailwind: padding x/y, rounded corners, background color, border
-  const msg = document.createElement("div");
-  msg.className = `inline-block px-3 py-2 rounded-lg border break-words max-w-[50%]
-    ${mine ? "bg-teal-600 border-teal-500 text-white" : "bg-gray-700 border-gray-600 text-gray-100"}`;
-  msg.textContent = text;
+  // If the message is a game invitation
+  if (gameInvite && !mine) {
+    msgContainer.innerHTML = `
+      <div class="text-xs text-gray-400 mb-0.5">${fromName}</div>
+      <div class="inline-block px-4 py-3 rounded-lg border bg-orange-600 border-orange-500 text-white max-w-[70%]">
+        <div class="mb-2 font-medium">${gameInvite.inviterName} invites you to play!</div>
+        <div class="flex gap-2">
+          <button id="accept-btn" class="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm transition">Accept</button>
+          <button id="decline-btn" class="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm transition">Decline</button>
+        </div>
+      </div>
+    `;
 
-  // This shows the sender's name above the message
-  if (!mine) {
-    const label = document.createElement("div");
-    // small text, gray with margin bottom
-    label.className = "text-xs text-gray-400 mb-0.5";
-    label.textContent = fromName!;
-    // Append the name above the message
-    msgContainer.appendChild(label);
+    // Add event listeners after innerHTML is set
+    const acceptBtn = msgContainer.querySelector("#accept-btn") as HTMLButtonElement;
+    const declineBtn = msgContainer.querySelector("#decline-btn") as HTMLButtonElement;
+    const inviteBox = msgContainer.querySelector(".bg-orange-600") as HTMLDivElement;
+
+    acceptBtn?.addEventListener("click", () => {
+      ws.send({ 
+        type: "acceptGameInvite", 
+        roomId: gameInvite.roomId,
+        inviterUserId: currentChat?.peerId 
+      });
+      acceptBtn.disabled = true;
+      declineBtn.disabled = true;
+    });
+
+    declineBtn?.addEventListener("click", () => {
+      inviteBox.innerHTML = '<div class="text-gray-300">Invitation declined</div>';
+    });
+
+    // Expires the invitation after 30 seconds
+    setTimeout(() => {
+      if (!acceptBtn.disabled) {
+        inviteBox.innerHTML = '<div class="text-gray-400">Invitation expired</div>';
+      }
+    }, 30000);
+
+  } else {
+    // Text message either right or left
+    const labelHtml = !mine ? `<div class="text-xs text-gray-400 mb-0.5">${fromName}</div>` : '';
+    const msgClass = mine ? "bg-teal-600 border-teal-500 text-white" : "bg-gray-700 border-gray-600 text-gray-100";
+    
+    msgContainer.innerHTML = `
+      ${labelHtml}
+      <div class="inline-block px-3 py-2 rounded-lg border break-words max-w-[50%] ${msgClass}">
+        ${text}
+      </div>
+    `;
   }
 
-  msgContainer.appendChild(msg);
   history.appendChild(msgContainer);
-  // Auto scroll to the bottom
   history.scrollTop = history.scrollHeight;
 };
 
@@ -501,7 +567,6 @@ export const HomeController = async (root: HTMLElement) => {
     const modal = document.getElementById("home-users-modal") as HTMLDivElement;
     const usernameEl = document.getElementById("home-users-username") as HTMLHeadingElement;
     const levelEl = document.getElementById("home-users-level") as HTMLParagraphElement;
-    const avatarEl = document.getElementById("home-users-avatar") as HTMLDivElement;
     const winsEl = document.getElementById("home-users-wins") as HTMLDivElement;
     const lossesEl = document.getElementById("home-users-losses") as HTMLDivElement;
     const winrateEl = document.getElementById("home-users-winrate") as HTMLDivElement;
@@ -509,7 +574,6 @@ export const HomeController = async (root: HTMLElement) => {
     // Populate user data
     usernameEl.textContent = user.username;
     levelEl.textContent = `Level ${user.level}`;
-    avatarEl.textContent = user.username.charAt(0).toUpperCase();
     winsEl.textContent = user.wins.toString();
     lossesEl.textContent = user.losses.toString();
     
@@ -522,26 +586,30 @@ export const HomeController = async (root: HTMLElement) => {
     const unfriendBtn = document.getElementById("home-users-unfriend") as HTMLButtonElement;
     const statusMessage = document.getElementById("home-users-status-message") as HTMLDivElement;
 
-    // Hide all elements initially
+    // Hide all elements
     addFriendBtn.classList.add("hidden");
     unfriendBtn.classList.add("hidden");
     statusMessage.classList.add("hidden");
 
-    // Show appropriate button or status message based on user status
+    // Show appropriate buttons
     switch (user.status) {
+      // Show the Add Friend button in the users modal
       case "ok":
         addFriendBtn.classList.remove("hidden");
         break;
+      // Show the Unfriend button in the users modal
       case "friend":
         unfriendBtn.classList.remove("hidden");
         break;
+      // If blocked them, update the status message
       case "blocked":
-        statusMessage.textContent = "You have blocked this user";
+        statusMessage.textContent = "You have blocked the user";
         statusMessage.className = "w-full px-4 py-2 rounded-md bg-red-600 text-white text-center";
         statusMessage.classList.remove("hidden");
         break;
+      // If blocked me, update the status message
       case "blocked_me":
-        statusMessage.textContent = "This user has blocked you";
+        statusMessage.textContent = "This user blocked you";
         statusMessage.className = "w-full px-4 py-2 rounded-md bg-yellow-600 text-white text-center";
         statusMessage.classList.remove("hidden");
         break;
@@ -686,6 +754,33 @@ export const HomeController = async (root: HTMLElement) => {
 
   // When the ws receives a type "chat" message from the server
   ws.on("chat", chatSub);
+
+  // Handle incoming game invitations
+  const gameInviteSub = (m: { type: "gameInvite"; from: number; roomId: string; inviterName: string }) => {
+    console.log("Received game invitation");
+    // If the user is currently in the chat with the inviter => show the invitation
+    if (currentChat && m.from === currentChat.peerId) {
+      // Show the game invitation in the current chat
+      appendChatMsg("", false, m.inviterName, { 
+        roomId: m.roomId, 
+        inviterName: m.inviterName 
+      });
+    }
+  };
+
+  // Lets the user join the room when the server sent the acceptance
+  const inviteAcceptedSub = (m: { type: "inviteAccepted"; roomId: string }) => {
+    console.log("Invite accepted, joining room:", m.roomId);
+    navigate(`/remote?room=${m.roomId}`);
+  };
+
+  const inviteErrorSub = (m: { type: "inviteError"; message: string }) => {
+    alert(`Cannot join game: ${m.message}`);
+  };
+
+  ws.on("inviteAccepted", inviteAcceptedSub);
+  ws.on("inviteError", inviteErrorSub);
+  ws.on("gameInvite", gameInviteSub);
 
   // Prepare the chat modal in the DOM and bind the open/close click logic
   prepareChatModal();

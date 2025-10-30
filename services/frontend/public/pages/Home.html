@@ -110,12 +110,13 @@
       <!-- Footer -->
       <!-- flex to arrange input and send button -->
       <form id="chat-form" class="flex items-center gap-2 p-3 border-t border-gray-300">
-        <!-- textarea instead of input for multi-lines -->
-        <textarea id="chat-input"
-          class="flex-1 px-3 py-2 rounded-md bg-gray-700 border border-gray-300 text-white outline-none overflow-y-auto"
-          rows="1" placeholder="Type a message..."></textarea>
-        <button id="chat-send" class="px-4 py-2 rounded-md bg-teal-500 text-white">
+        <input type="text" id="chat-input" placeholder="Type a message and press Enter..."
+          class="flex-1 px-3 py-2 rounded-md bg-gray-700 border border-gray-300 text-white outline-none focus:border-teal-400 transition" />
+        <button type="submit" id="chat-send" class="px-4 py-2 rounded-md bg-teal-500 text-white hover:bg-teal-600 transition">
           Send
+        </button>
+        <button type="button" id="chat-invite-btn" class="px-3 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition text-sm">
+            Invite
         </button>
       </form>
     </div>
