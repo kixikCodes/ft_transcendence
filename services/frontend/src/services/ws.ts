@@ -6,6 +6,9 @@ import { Derived } from "@app/shared";
 type Msg = 
   | { type: "hello"; userId: number }
   | { type: 'chat'; userId: number; content: string; }
+  | { type: 'gameInvite'; from: number; roomId: string; inviterName: string; }
+  | { type: 'inviteAccepted'; roomId: string; }
+  | { type: 'inviteError'; message: string; }
   | { type: 'state'; state: ServerState; }
   | { type: 'join'; roomId: string; side: string; gameConfig: Derived; state: ServerState; }
   | { type: 'start'; timestamp: Number; }

@@ -88,7 +88,9 @@ export class TournamentManager {
 
 
   createMatch(p1, p2, round) {
-    const room = new Room();
+    // Mark as tournament, so "getOrCreateRoom" does not pick it up when
+    // trying to find a room for regular games and adding players to them
+    const room = new Room(null, "tournament");
     rooms.push(room);
 
     // Add both players into the room (use provided ws if present; gameRooms will make safe placeholders)

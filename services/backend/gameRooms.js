@@ -5,10 +5,15 @@ export const rooms = [];
 // export const rooms = new Map();
 
 export class Room {
-  constructor() {
-    this.id = nextRoomId ++;
-    this.name = "Default";
+  constructor(customId = null, type = "regular") {
+    this.id = customId || nextRoomId++;
     this.players = new Map();
+    // Date when the room was created
+    this.createdAt = Date.now();
+    // "regular" for normal matchmaking,
+    // "tournament" for tournament matches,
+    // "private" for invitation-only rooms
+    this.type = type;
   // build config first so we can derive paddle X positions
   this.config = buildWorld();
   this.state = this.initState();
@@ -116,14 +121,15 @@ export class Room {
   }
 }
 
-export function getOrCreateRoom(name) {
-  // const index = rooms.findIndex(room => room.id === ws._roomId);
-  // const room = rooms[index];
-  let room = rooms.length > 0 ? rooms[rooms.length - 1] : null;
+export function getOrCreateRoom() {
+  // Find the latest regular room that has less than 2 players
+  let room = rooms.find(r => r.type === "regular" && r.players.size < 2);
+  
+  // If no available, create a new one
   if (!room) {
-    room = new Room();
+    room = new Room(null, "regular");
     rooms.push(room);
   }
-  room.name = name;
+  
   return room;
 }

@@ -4,7 +4,7 @@ import cors from "@fastify/cors";
 import { fastifyMultipart } from "@fastify/multipart";
 import { fastifyStatic } from "@fastify/static";
 import websocket from "@fastify/websocket";
-import { getOrCreateRoom, rooms } from "./gameRooms.js";
+import { getOrCreateRoom, rooms, Room } from "./gameRooms.js";
 import { initDb } from "./initDatabases.js";
 import { fetchAll, updateRowInTable, addRowToTable, removeRowFromTable } from "./DatabaseUtils.js";
 import { broadcaster, getUserIdFromRequest } from "./utils.js";
@@ -154,9 +154,114 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
 			}
 			console.log("Chat message sent to user", to);
 
+          // If the user wants to send a game invite
+		} else if (type === "gameInvite") {
+			const { to, roomId } = parsed;
+
+            console.log(`The user ${userId} invites the user ${to} in room ${roomId}`);
+			
+			const inviter = await fetchAll(db, "SELECT username FROM users WHERE id = ?", [userId]);
+			const inviterName = inviter[0]?.username;
+			
+			const target = clients.get(to);
+            // "to" is the userId of the target user
+            // We get the Set of websockets for "to" from clients map
+            // If there is no Set, the user is offline
+            // If a user logs out, the websockets are removed from the Set
+			if (!target) {
+				return;
+			}
+
+            // Send a game invite to the target users sockets
+			for (const socket of target) {
+				if (socket.readyState === 1) {
+					socket.send(JSON.stringify({ 
+						type: "gameInvite", 
+						from: userId, 
+						roomId: roomId,
+						inviterName: inviterName
+					}));
+				}
+			}
+
+          // If the user wants to accept a game invite
+		} else if (type === "acceptGameInvite") {
+			const { roomId, inviterUserId } = parsed;
+			console.log(`User ${userId} wants to accept game invite from ${inviterUserId}, room: ${roomId}`);
+			
+			// Check if inviter is still online and available
+			const inviter = clients.get(inviterUserId);
+			if (!inviter || inviter.size === 0) {
+				ws.send(JSON.stringify({ 
+					type: "inviteError", 
+					message: "The player who invited you is offline." 
+				}));
+				return;
+			}
+			
+			// Check if inviter is already in another game
+			let inGame = false;
+			for (const room of rooms) {
+                // Extract the ws and player from the room's players Map
+                // room.player = {ws, { id, side, ready, userId }}
+				for (const [roomWs, player] of room.players) {
+                    // If the player who invited is found in any room => not available
+					if (player.userId === inviterUserId) {
+						inGame = true;
+						break;
+					}
+				}
+				if (inGame) break;
+			}
+
+			if (inGame) {
+				ws.send(JSON.stringify({
+					type: "inviteError",
+					message: "The player who invited you is already in another game."
+				}));
+				return;
+			}
+			
+            // When the users are available, let them join the room
+
+            // Adds the accepting player to the room
+			ws.send(JSON.stringify({
+				type: "inviteAccepted",
+				roomId: roomId
+			}));
+			
+			// Add the inviter to the room
+			for (const socket of inviter) {
+				if (socket.readyState === 1) {
+					socket.send(JSON.stringify({ 
+						type: "inviteAccepted", 
+						roomId: roomId 
+					}));
+				}
+			}
+
 		} else if (type === "join") {
 			// Join a game room
-			const room = getOrCreateRoom(parsed.roomId);
+			// If either the user provided a roomId in the input
+            // or he got invited and clicked on accept and therefore
+            // got redirected to Remote.html and Remote.ts sent the "join" message with
+            // the roomId extracted from the URL, then use that roomId to join a specific room
+            const { roomId: requestedRoomId } = parsed;
+			let room;
+			
+			if (requestedRoomId) {
+				// If the private room does not exist yet => create it
+                // The other user just joins the existing private room
+				room = rooms.find(r => r.id === requestedRoomId);
+				if (!room) {
+					room = new Room(requestedRoomId, "private");
+					rooms.push(room);
+				}
+			} else {
+				// Otherwise just join any random open regular room
+				room = getOrCreateRoom();
+			}
+			
 			if (room.players.has(ws)) return;
 			room.addPlayer(userId, ws);
 			// Response to the client, which side the player is on and the current state to render the initial game state

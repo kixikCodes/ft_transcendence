@@ -94,7 +94,7 @@ type UsersData = {
   created_at: string;
   email?: string;
   avatar_selector?: number;
-  status: "ok" | "friend" | "blocked" | "blocked_me";
+  status: "ok" | "friend" | "blocked" | "blocked_me" | "request_sent";
 };
 
 type FriendsType = {
@@ -123,6 +123,30 @@ type ChatContext = {
   peerName: string;
 };
 let currentChat: ChatContext | null = null;
+
+// When this user sends a friend request to userId inside the users modal
+const sendRequest = async (userId: number, myUserId: number | undefined) => {
+  const res = await fetch(`/api/users/${myUserId}/sendFriendRequest`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ friendId: userId })
+  });
+  if (!res.ok) {
+    console.error("Failed to send friend request:", res.statusText);
+  }
+};
+
+// When this user unfriends userId inside the users modal
+const unfriend = async (userId: number, myUserId: number | undefined) => {
+  const res = await fetch(`/api/users/${myUserId}/unfriend`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ friendId: userId })
+  });
+  if (!res.ok) {
+    console.error("Failed to unfriend user:", res.statusText);
+  }
+};
 
 // Same as in Dashboard.ts to get the users with their relationship status to render the user cards
 const getUsers = async (): Promise<UsersData[]> => {
@@ -169,9 +193,18 @@ const getUsers = async (): Promise<UsersData[]> => {
   }
   const blockedMeIds = (await blockedMeRes.json()).map((b: BlocksType) => b.user_id);
 
+  // Users that I have sent friend requests to
+  const sentRequestsRes = await fetch(`/api/users/${myUserId}/sentFriendRequests`);
+  if (!sentRequestsRes.ok) {
+    console.error("Failed to fetch sent friend requests:", sentRequestsRes.statusText);
+    return [];
+  }
+  const sentRequestIds = (await sentRequestsRes.json()).map((r: any) => r.receiver_id);
+
   // console.log("Friend IDs in Home.ts:", friendIds);
   // console.log("Block IDs in Home.ts:", blockIds);
   // console.log("Blocked Me IDs in Home.ts:", blockedMeIds);
+  // console.log("Sent Request IDs in Home.ts:", sentRequestIds);
 
   for (const user of users) {
     if (user.id === myUserId)
@@ -182,6 +215,8 @@ const getUsers = async (): Promise<UsersData[]> => {
       user.status = "blocked_me";
     else if (friendIds.includes(user.id))
       user.status = "friend";
+    else if (sentRequestIds.includes(user.id))
+      user.status = "request_sent";
     else
       user.status = "ok";
   }
@@ -223,38 +258,6 @@ const declineFriendRequest = async (requestId: number) => {
     if (!res.ok) throw new Error(await res.text());
   } catch (error) {
     console.error("Error declining friend request:", error);
-  }
-};
-
-// This renders the friends list in the container (sidebar). Friends are users with status
-// "friend" to this user (retrieved from getUsers())
-const renderFriends = (container: HTMLUListElement, users: UsersData[], myUserId: number) => {
-  // console.log("Rendering friends list in sidebar...");
-  container.innerHTML = "";
-
-  // Get the users from users, which are friends to this user
-  const friends = users.filter((u) => u.id !== myUserId && u.status === "friend");
-
-  // If there are no friends, show "No friends yet"
-  const empty = document.getElementById("friends-empty");
-  if (friends.length === 0) empty?.classList.remove("hidden");
-  else empty?.classList.add("hidden");
-
-  // Render each friend in the sidebar
-  for (const f of friends) {
-    const li = document.createElement("li");
-    li.className = "flex justify-between items-center text-white";
-    li.dataset.userId = String(f.id);
-    // Each friend li has the friend's name and a chat button.
-    // The chat button will only be visible, if the user is not blocked by this user
-    li.innerHTML = `
-      <span class="friend_name">${f.username}</span>
-      <button class="friend_chat underline text-sm" data-action="chat">chat</button>
-    `;
-    const btn = li.querySelector<HTMLButtonElement>('[data-action="chat"]')!;
-    // TODO: Open chat with friend f.id
-    btn.addEventListener("click", () => openChatModal(f));
-    container.appendChild(li);
   }
 };
 
@@ -327,6 +330,7 @@ const prepareChatModal = async () => {
   const modal = document.getElementById("chat-modal")! as HTMLDivElement;
   const closeBtn = document.getElementById("chat-close")! as HTMLButtonElement;
   const form = document.getElementById("chat-form")! as HTMLFormElement;
+  const inviteBtn = document.getElementById("chat-invite-btn")! as HTMLButtonElement;
 
   // Hide it if user clicks the close button
   const hide = () => modal.classList.add("hidden");
@@ -361,63 +365,104 @@ const prepareChatModal = async () => {
     input.value = "";
     input.focus();
   });
-};
 
-// This will be called when the user clicks the chat button
-// in the friends list which contains the friend's object
-const openChatModal = (friend: UsersData) => {
-  currentChat = { peerId: friend.id, peerName: friend.username };
-
-  const modal = document.getElementById("chat-modal") as HTMLDivElement;
-  const uname = document.getElementById("chat-username") as HTMLHeadingElement;
-  const history = document.getElementById("chat-history") as HTMLDivElement;
-  const avatar = document.getElementById("chat-avatar") as HTMLImageElement;
-  const input = document.getElementById("chat-input") as HTMLInputElement;
-
-  // Show the friend's name in the modal header
-  uname.textContent = friend.username;
-
-  // Clear the chat history (for now. For later perhaps load the the chat history.
-  // That would also be useful if this user has multiple chat modals open)
-  history.innerHTML = "";
-
-  modal.classList.remove("hidden");
-
-  // Focus the input field: It directly sets the cursor there
-  input?.focus();
+  inviteBtn.addEventListener("click", () => {
+    if (!currentChat) {
+      return;
+    }
+    
+    const roomId = crypto.randomUUID();
+    
+    // Disable button temporarily
+    inviteBtn.disabled = true;
+    
+    // Send game invitation to the chatter peer
+    try {
+      ws.send({
+        type: "gameInvite",
+        to: currentChat.peerId,
+        roomId: roomId,
+        inviterName: ""
+      });
+      
+      // Show invitation sent message
+      appendChatMsg(`Game invitation sent!`, true);
+      // Re-enable button after 2 seconds
+      setTimeout(() => {
+        inviteBtn.disabled = false;
+        inviteBtn.textContent = "Invite";
+      }, 2000);
+      
+    } catch (err) {
+      inviteBtn.disabled = false;
+      inviteBtn.textContent = "Invite";
+    }
+  });
 };
 
 // Appends a chat message to the chat
 // Will be called when the user sends a message (mine: true)
 // and when a message is received from the server
-const appendChatMsg = (text: string, mine?: boolean, fromName?: string) => {
+const appendChatMsg = (text: string, mine?: boolean, fromName?: string, gameInvite?: { roomId: string, inviterName: string }) => {
   const history = document.getElementById("chat-history")!;
 
-  // The message container
+  // Create message container
   const msgContainer = document.createElement("div");
-  // Tailwind: margin auto left/right, text align left/right
   msgContainer.className = `${mine ? "ml-auto text-right" : "mr-auto text-left"}`;
 
-  // The message
-  // Tailwind: padding x/y, rounded corners, background color, border
-  const msg = document.createElement("div");
-  msg.className = `inline-block px-3 py-2 rounded-lg border break-words max-w-[50%]
-    ${mine ? "bg-teal-600 border-teal-500 text-white" : "bg-gray-700 border-gray-600 text-gray-100"}`;
-  msg.textContent = text;
+  // If the message is a game invitation
+  if (gameInvite && !mine) {
+    msgContainer.innerHTML = `
+      <div class="text-xs text-gray-400 mb-0.5">${fromName}</div>
+      <div class="inline-block px-4 py-3 rounded-lg border bg-orange-600 border-orange-500 text-white max-w-[70%]">
+        <div class="mb-2 font-medium">${gameInvite.inviterName} invites you to play!</div>
+        <div class="flex gap-2">
+          <button id="accept-btn" class="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm transition">Accept</button>
+          <button id="decline-btn" class="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm transition">Decline</button>
+        </div>
+      </div>
+    `;
 
-  // This shows the sender's name above the message
-  if (!mine) {
-    const label = document.createElement("div");
-    // small text, gray with margin bottom
-    label.className = "text-xs text-gray-400 mb-0.5";
-    label.textContent = fromName!;
-    // Append the name above the message
-    msgContainer.appendChild(label);
+    // Add event listeners after innerHTML is set
+    const acceptBtn = msgContainer.querySelector("#accept-btn") as HTMLButtonElement;
+    const declineBtn = msgContainer.querySelector("#decline-btn") as HTMLButtonElement;
+    const inviteBox = msgContainer.querySelector(".bg-orange-600") as HTMLDivElement;
+
+    acceptBtn?.addEventListener("click", () => {
+      ws.send({ 
+        type: "acceptGameInvite", 
+        roomId: gameInvite.roomId,
+        inviterUserId: currentChat?.peerId 
+      });
+      acceptBtn.disabled = true;
+      declineBtn.disabled = true;
+    });
+
+    declineBtn?.addEventListener("click", () => {
+      inviteBox.innerHTML = '<div class="text-gray-300">Invitation declined</div>';
+    });
+
+    // Expires the invitation after 30 seconds
+    setTimeout(() => {
+      if (!acceptBtn.disabled) {
+        inviteBox.innerHTML = '<div class="text-gray-400">Invitation expired</div>';
+      }
+    }, 30000);
+
+  } else {
+    // Text message either right or left
+    const labelHtml = !mine ? `<div class="text-xs text-gray-400 mb-0.5">${fromName}</div>` : '';
+    const msgClass = mine ? "bg-teal-600 border-teal-500 text-white" : "bg-gray-700 border-gray-600 text-gray-100";
+    
+    msgContainer.innerHTML = `
+      ${labelHtml}
+      <div class="inline-block px-3 py-2 rounded-lg border break-words max-w-[50%] ${msgClass}">
+        ${text}
+      </div>
+    `;
   }
 
-  msgContainer.appendChild(msg);
   history.appendChild(msgContainer);
-  // Auto scroll to the bottom
   history.scrollTop = history.scrollHeight;
 };
 
@@ -527,6 +572,172 @@ export const HomeController = async (root: HTMLElement) => {
     return () => { };
   }
 
+  // Function to open and populate the Users Modal
+  const openUsersModal = (user: UsersData) => {
+    const modal = document.getElementById("home-users-modal") as HTMLDivElement;
+    const usernameEl = document.getElementById("home-users-username") as HTMLHeadingElement;
+    const levelEl = document.getElementById("home-users-level") as HTMLParagraphElement;
+    const winsEl = document.getElementById("home-users-wins") as HTMLDivElement;
+    const lossesEl = document.getElementById("home-users-losses") as HTMLDivElement;
+    const winrateEl = document.getElementById("home-users-winrate") as HTMLDivElement;
+
+    // Populate user data
+    usernameEl.textContent = user.username;
+    levelEl.textContent = `Level ${user.level}`;
+    winsEl.textContent = user.wins.toString();
+    lossesEl.textContent = user.losses.toString();
+    
+    const totalGames = user.wins + user.losses;
+    const winRate = totalGames > 0 ? Math.round((user.wins / totalGames) * 100) : 0;
+    winrateEl.textContent = `${winRate}%`;
+
+    // Get action buttons and status message
+    const addFriendBtn = document.getElementById("home-users-add-friend") as HTMLButtonElement;
+    const unfriendBtn = document.getElementById("home-users-unfriend") as HTMLButtonElement;
+    const statusMessage = document.getElementById("home-users-status-message") as HTMLDivElement;
+
+    // Hide all elements
+    addFriendBtn.classList.add("hidden");
+    unfriendBtn.classList.add("hidden");
+    statusMessage.classList.add("hidden");
+
+    // Show appropriate buttons
+    switch (user.status) {
+      // Show the Add Friend button in the users modal
+      case "ok":
+        addFriendBtn.classList.remove("hidden");
+        break;
+      // Show the Unfriend button in the users modal
+      case "friend":
+        unfriendBtn.classList.remove("hidden");
+        break;
+      // If blocked them, update the status message
+      case "blocked":
+        statusMessage.textContent = "You have blocked the user";
+        statusMessage.className = "w-full px-4 py-2 rounded-md bg-red-600 text-white text-center";
+        statusMessage.classList.remove("hidden");
+        break;
+      // If blocked me, update the status message
+      case "blocked_me":
+        statusMessage.textContent = "This user blocked you";
+        statusMessage.className = "w-full px-4 py-2 rounded-md bg-yellow-600 text-white text-center";
+        statusMessage.classList.remove("hidden");
+        break;
+      case "request_sent":
+        statusMessage.textContent = "Friend request sent";
+        statusMessage.className = "w-full px-4 py-2 rounded-md bg-purple-600 text-white text-center";
+        statusMessage.classList.remove("hidden");
+        break;
+    }
+
+    // Event listeners on the buttons in the users modal
+    addFriendBtn.onclick = async () => {
+      console.log("Add friend from users modal:", user.id);
+      await sendRequest(user.id, myUserId);
+      modal.classList.add("hidden");
+      // Refresh friends list
+      const users = await getUsers();
+      renderFriends(friendsListEl, users, myUserId);
+    };
+
+    unfriendBtn.onclick = async () => {
+      console.log("Unfriend from users modal:", user.id);
+      await unfriend(user.id, myUserId);
+      modal.classList.add("hidden");
+      // Refresh friends list
+      const users = await getUsers();
+      renderFriends(friendsListEl, users, myUserId);
+    };
+
+    // Show the modal
+    modal.classList.remove("hidden");
+  };
+
+  // This renders the friends list in the container (sidebar). Friends are users with status
+  // "friend" to this user (retrieved from getUsers())
+  const renderFriends = (container: HTMLUListElement, users: UsersData[], myUserId: number) => {
+    // console.log("Rendering friends list in sidebar...");
+    container.innerHTML = "";
+
+    // Get the users from users, which are friends to this user
+    const friends = users.filter((u) => u.id !== myUserId && u.status === "friend");
+
+    // If there are no friends, show "No friends yet"
+    const empty = document.getElementById("friends-empty");
+    if (friends.length === 0) empty?.classList.remove("hidden");
+    else empty?.classList.add("hidden");
+
+    // Render each friend in the sidebar
+    for (const f of friends) {
+      const li = document.createElement("li");
+      li.className = "flex justify-between items-center text-white";
+      li.setAttribute("data-user-id", f.id.toString());
+
+      const friendName = document.createElement("span");
+      friendName.className = "friend_name cursor-pointer hover:text-teal-400";
+      friendName.textContent = f.username;
+
+      const chatBtn = document.createElement("button");
+      chatBtn.className = "friend_chat underline text-sm hover:text-teal-400";
+      chatBtn.setAttribute("data-action", "chat");
+      chatBtn.textContent = "chat";
+
+      // Add click handlers
+      friendName.addEventListener("click", () => {
+        console.log("Opening users modal for friend:", f.username);
+        openUsersModal(f);
+      });
+
+      chatBtn.addEventListener("click", () => {
+        console.log("Opening chat with:", f.username);
+        openChatModal(f);
+      });
+
+      li.appendChild(friendName);
+      li.appendChild(chatBtn);
+      container.appendChild(li);
+    }
+  };
+
+  // This will be called when the user clicks the chat button
+  // in the friends list which contains the friend's object
+  const openChatModal = (friend: UsersData) => {
+    currentChat = { peerId: friend.id, peerName: friend.username };
+
+    const modal = document.getElementById("chat-modal") as HTMLDivElement;
+    const uname = document.getElementById("chat-username") as HTMLHeadingElement;
+    const history = document.getElementById("chat-history") as HTMLDivElement;
+    const avatar = document.getElementById("chat-avatar") as HTMLImageElement;
+    const input = document.getElementById("chat-input") as HTMLInputElement;
+
+    // Show the friend's name in the modal header
+    uname.textContent = friend.username;
+    avatar.textContent = friend.username.charAt(0).toUpperCase();
+
+    // Add click handlers to username and avatar to open Users Modal
+    const clickHandler = () => {
+      console.log("Opening users modal from chat for:", friend.username);
+      openUsersModal(friend);
+    };
+    
+    // Remove previous click handlers and add new ones
+    uname.onclick = clickHandler;
+    avatar.onclick = clickHandler;
+    uname.style.cursor = 'pointer';
+    avatar.style.cursor = 'pointer';
+    uname.classList.add('hover:text-teal-400');
+    avatar.classList.add('hover:bg-gray-600');
+
+    // Clear the chat history (for now. For later perhaps load the the chat history.
+    // That would also be useful if this user has multiple chat modals open)
+    history.innerHTML = "";
+
+    modal.classList.remove("hidden");
+
+    // Focus the input field: It directly sets the cursor there
+    input?.focus();
+  };
+
   // If the userId was successfully fetched, connect the WS with the userId
   ws.connect(myUserId);
 
@@ -554,8 +765,55 @@ export const HomeController = async (root: HTMLElement) => {
   // When the ws receives a type "chat" message from the server
   ws.on("chat", chatSub);
 
+  // Handle incoming game invitations
+  const gameInviteSub = (m: { type: "gameInvite"; from: number; roomId: string; inviterName: string }) => {
+    console.log("Received game invitation");
+    // If the user is currently in the chat with the inviter => show the invitation
+    if (currentChat && m.from === currentChat.peerId) {
+      // Show the game invitation in the current chat
+      appendChatMsg("", false, m.inviterName, { 
+        roomId: m.roomId, 
+        inviterName: m.inviterName 
+      });
+    }
+  };
+
+  // Lets the user join the room when the server sent the acceptance
+  const inviteAcceptedSub = (m: { type: "inviteAccepted"; roomId: string }) => {
+    console.log("Invite accepted, joining room:", m.roomId);
+    navigate(`/remote?room=${m.roomId}`);
+  };
+
+  const inviteErrorSub = (m: { type: "inviteError"; message: string }) => {
+    alert(`Cannot join game: ${m.message}`);
+  };
+
+  ws.on("inviteAccepted", inviteAcceptedSub);
+  ws.on("inviteError", inviteErrorSub);
+  ws.on("gameInvite", gameInviteSub);
+
   // Prepare the chat modal in the DOM and bind the open/close click logic
   prepareChatModal();
+
+  // Users Modal close event listeners
+  const usersModal = document.getElementById("home-users-modal") as HTMLDivElement;
+  const usersCloseBtn = document.getElementById("home-users-close") as HTMLButtonElement;
+  
+  const closeUsersModal = () => {
+    usersModal?.classList.add("hidden");
+  };
+  
+  if (usersCloseBtn) {
+    usersCloseBtn.addEventListener("click", closeUsersModal);
+  }
+  
+  if (usersModal) {
+    usersModal.addEventListener("click", (e) => {
+      if (e.target === usersModal) {
+        closeUsersModal();
+      }
+    });
+  }
 
   // UI Elements from the Home page to fill them dynamically
   const myProfilePicEl = root.querySelector<HTMLImageElement>("#my-avatar")!;
@@ -797,6 +1055,24 @@ export const HomeController = async (root: HTMLElement) => {
 			deletePasswordInput.value = "";
 		});
 	}
+
+  // Set up Users Modal close handlers
+  const usersModalSetup = document.getElementById("home-users-modal") as HTMLDivElement;
+  const usersCloseBtnSetup = document.getElementById("home-users-close") as HTMLButtonElement;
+  
+  if (usersCloseBtnSetup) {
+    usersCloseBtnSetup.addEventListener("click", () => {
+      usersModalSetup.classList.add("hidden");
+    });
+  }
+  
+  if (usersModalSetup) {
+    usersModalSetup.addEventListener("click", (e) => {
+      if (e.target === usersModalSetup) {
+        usersModalSetup.classList.add("hidden");
+      }
+    });
+  }
 
   // Binds the tooltip listeners
   attachTooltipListeners(root);

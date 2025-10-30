@@ -56,14 +56,22 @@ export const RemoteController = (root: HTMLElement) => {
     game.soundManager.playTheme();
   });
 
+  // When user clicks "Accept" on a game invitation in chat, they get redirected to:
+  // "/remote?room=UUID"
+  // and URLSearchParams extracts the UUID from the query string
+  const urlParams = new URLSearchParams(window.location.search);
+  const inviteRoomId = urlParams.get('room');
+  
+  // So if there was a UUID in the URL, let the user join that room automatically
+  if (inviteRoomId) {
+    roomInput.value = inviteRoomId;
+    ws.send({ type: "join", userId, roomId: inviteRoomId });
+  }
+
   // --- Outgoing actions ---
   const onJoin = () => {
     const roomId = roomInput.value.trim();
-    if (!roomId) {
-      tournamentStatus.textContent = "Enter a room name first.";
-      return;
-    }
-    ws.send({ type: "join", userId, roomId });
+    ws.send({ type: "join", userId, roomId: roomId || undefined });
   };
 
   const onLeave = () => {
