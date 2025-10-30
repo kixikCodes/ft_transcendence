@@ -33,9 +33,16 @@ export const AIController = (root: HTMLElement) => {
     navigate("/");
   };
 
+  const onBackArrow = () => {
+    if (game.getGameStatus().playing)
+        game.stopGame();
+    game.soundManager.stopTheme();
+  };
+
   // --- Button listeners ---
   startBtn.addEventListener("click", onStart);
   leaveBtn.addEventListener("click", onLeave);
+  window.addEventListener("popstate", onBackArrow);
 
   const onEasy = () => {
     if (!game.getGameStatus().playing)
@@ -70,5 +77,6 @@ export const AIController = (root: HTMLElement) => {
     easyBtn.removeEventListener("click", onEasy);
     mediumBtn.removeEventListener("click", onMedium);
     hardBtn.removeEventListener("click", onHard);
+    //window.removeEventListener("popstate", onBackArrow);
   };
 };

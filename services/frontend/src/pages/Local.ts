@@ -29,9 +29,16 @@ export const LocalController = (root: HTMLElement) => {
     navigate("/");
   };
 
+  const onBackArrow = () => {
+    if (game.getGameStatus().playing)
+        game.stopGame();
+    game.soundManager.stopTheme();
+  };
+
   // --- Button listeners ---
   startBtn.addEventListener("click", onStart);
   leaveBtn.addEventListener("click", onLeave);
+  window.addEventListener("popstate", onBackArrow);
 
   // --- Cleanup ---
   return () => {
@@ -43,5 +50,6 @@ export const LocalController = (root: HTMLElement) => {
     game.soundManager.stopTheme();
     startBtn.removeEventListener("click", onStart);
     leaveBtn.removeEventListener("click", onLeave);
+    //window.removeEventListener("popstate", onBackArrow);
   };
 };
