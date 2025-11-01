@@ -33,28 +33,34 @@ export const RemoteController = (root: HTMLElement) => {
   });
 
   // --- Handlers for incoming server messages ---
-  ws.on("state", (m: { type: "state"; state: ServerState }) => {
+  const onState = (m: { type: "state"; state: ServerState }) => {
     game.applyServerState(m.state);
-  });
+  };
 
-  ws.on("join", (m: { type: "join"; roomId: string; roomName: string; side: string; gameConfig: Derived; state: ServerState }) => {
+  const onJoinRoom = (m: { type: "join"; roomId: string; roomName: string; side: string; gameConfig: Derived; state: ServerState }) => {
     console.log("Joined room:", m.roomId, "as", m.side);
     game.setConfig(m.gameConfig);
     game.applyServerState(m.state);
     tournamentStatus.textContent = `Joined ${m.roomName} as ${m.side === "left" ? "P1 (left)" : "P2 (right)"}`;
-  });
+  };
 
-  ws.on("reset", () => {
+  const onReset = () => {
+    game.resetServerState();
     game.stopGame();
     tournamentStatus.textContent = "Game reset.";
     game.soundManager.stopTheme();
-  });
+  };
 
-  ws.on("start", (m: { type: "start"; timestamp: number }) => {
+  const onGameStart = (m: { type: "start"; timestamp: number }) => {
     game.setTimestamp(m.timestamp);
     tournamentStatus.textContent = "Game started!";
     game.soundManager.playTheme();
-  });
+  };
+
+  ws.on("state", onState);
+  ws.on("join", onJoinRoom);
+  ws.on("reset", onReset);
+  ws.on("start", onGameStart);
 
   // When user clicks "Accept" on a game invitation in chat, they get redirected to:
   // "/remote?room=UUID"
@@ -106,6 +112,13 @@ export const RemoteController = (root: HTMLElement) => {
   // --- Cleanup ---
   return () => {
     onLeave();
+    
+    // Remove all WebSocket event listeners
+    ws.off("state", onState);
+    ws.off("join", onJoinRoom);
+    ws.off("reset", onReset);
+    ws.off("start", onGameStart);
+    
     ws.close();
     joinBtn.removeEventListener("click", onJoin);
     leaveBtn.removeEventListener("click", onHome);

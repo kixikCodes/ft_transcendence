@@ -1083,6 +1083,9 @@ export const HomeController = async (root: HTMLElement) => {
     // Unsubscribe from WS messages
     ws.off("state", stateSub);
     ws.off("chat", chatSub);
+    ws.off("inviteAccepted", inviteAcceptedSub);
+    ws.off("inviteError", inviteErrorSub);
+    ws.off("gameInvite", gameInviteSub);
     
     // Close the WS connection
     ws.close();
