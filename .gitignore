@@ -3,3 +3,5 @@
 ./services/frontend/node_modules
 ./packages/shared/dist
 .DS_Store
+/monitoring/grafana/secrets/
+/services/nginx/ssl/

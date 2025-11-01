@@ -1,0 +1,11 @@
+groups:
+  - name: manual.test
+    rules:
+      - alert: ManualTestAlert
+        expr: vector(1)
+        for: 0s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Manual test alert"
+          description: "Fires unconditionally to test Prometheus -> Alertmanager -> Slack pipeline."
