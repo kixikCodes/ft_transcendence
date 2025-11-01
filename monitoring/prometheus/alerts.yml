@@ -1,0 +1,12 @@
+groups:
+  - name: basic.rules
+    rules:
+      - alert: BackendDown
+        expr: up{job="backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "Backend service down"
+          description: "The backend service (instance {{ $labels.instance }}) is not responding."

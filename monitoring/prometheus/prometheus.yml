@@ -1,0 +1,32 @@
+global:
+  scrape_interval: 15s
+
+rule_files:
+  - "/etc/prometheus/rules/alerts.yml"
+  - "/etc/prometheus/rules/test_fire_rule.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx-exporter:9113']
+  - job_name: 'backend'
+    static_configs:
+      - targets: ['backend:3000']
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+
+
+# remote_write:               # Remote write configuration for Grafana Cloud
+#   - url: <https://your-remote-write-endpoint>
+#     basic_auth:
+#       username: <your user name>
+#       password: <Your Grafana.com API Key>

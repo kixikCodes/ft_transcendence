@@ -4,6 +4,7 @@ import cors from "@fastify/cors";
 import { fastifyMultipart } from "@fastify/multipart";
 import { fastifyStatic } from "@fastify/static";
 import websocket from "@fastify/websocket";
+import metricsPlugin from "fastify-metrics";
 import { getOrCreateRoom, rooms, Room } from "./gameRooms.js";
 import { initDb } from "./initDatabases.js";
 import { fetchAll, updateRowInTable, addRowToTable, removeRowFromTable } from "./DatabaseUtils.js";
@@ -51,7 +52,12 @@ await fastify.register(fastifyStatic, {
   prefix: '/api/public/', // optional: default '/'
 });
 
-// Call the initDb function to create the tables by the time the server starts
+await fastify.register(metricsPlugin, {
+  endpoint: "/metrics",
+  enableDefaultMetrics: true,
+});
+
+// Initialize database
 initDb(db);
 
 // Register routes from fastifyRoutes.js
@@ -388,7 +394,7 @@ export function stopRoom(room, roomId) {
 
 // This function is called every 33ms to update the game state based on the current state and player input.
 // Then broadcast it to the players, so that they can render the new state
-export function loop(room) {
+function loop(room) {
 
 	// console.log("Game room tick. GameStatus:", room.state);
 	const config = room.config;

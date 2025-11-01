@@ -1,0 +1,20 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: "slack-receiver"
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 3h
+
+receivers:
+  - name: "slack-receiver"
+    slack_configs:
+      - api_url: "https://hooks.slack.com/services/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"
+        channel: "#alerts"
+        username: "alertmanager"
+        title: "{{ template \"slack.default.title\" . }}"
+        text: "{{ range .Alerts }}*{{ .Annotations.summary }}*\n{{ .Annotations.description }}\n{{ end }}"
+        send_resolved: true
+
+
