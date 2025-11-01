@@ -64,6 +64,13 @@ export class Room {
 
     // Clear player map
     this.players.clear();
+    
+    // Clear all state to ensure clean room closure
+    this.inputQueue = { left: [], right: [] };
+    this.state = this.initState();
+    const halfW = this.config.FIELD_WIDTH / 2;
+    this.tempState = { p1X: -halfW + 1, p1Y: 0, p2X: halfW - 1, p2Y: 0, ballX: 0, ballY: 0, scoreL: 0, scoreR: 0, p1_spd: 0, p2_spd: 0 };
+    this.ballV = resetBall();
 
     // Remove from global rooms array
     const idx = rooms.findIndex(r => r.id === this.id);
@@ -91,8 +98,32 @@ export class Room {
       };
     }
 
+    // Only reset room state if this is the first player or room was empty
+    const wasEmpty = this.players.size === 0;
+    
     this.players.set(sock, { id: userId, side: side, ready: false, userId });
     console.log(`User ${userId} added to room ${this.id}`);
+    
+    // Reset room state only for the first player who joins an empty room
+    if (wasEmpty) {
+      this.inputQueue = { left: [], right: [] };
+      
+      // Reset tempState
+      const halfW = this.config.FIELD_WIDTH / 2;
+      this.tempState = { p1X: -halfW + 1, p1Y: 0, p2X: halfW - 1, p2Y: 0, ballX: 0, ballY: 0, scoreL: 0, scoreR: 0, p1_spd: 0, p2_spd: 0 };
+      
+      // Reset ball velocity
+      this.ballV = resetBall();
+      
+      this.state = this.initState();
+      
+      // Stop any running game loop
+      if (this.loopInterval) {
+        clearInterval(this.loopInterval);
+        this.loopInterval = null;
+      }
+    }
+    
     // attach room metadata to the socket placeholder/real socket
     try { sock._roomId = this.id; } catch {}
     try { sock._side = side; } catch {}
