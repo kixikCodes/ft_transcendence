@@ -7,6 +7,7 @@ export const rooms = [];
 export class Room {
   constructor(customId = null, type = "regular") {
     this.id = customId || nextRoomId++;
+	this.name = "default";
     this.players = new Map();
     // Date when the room was created
     this.createdAt = Date.now();
@@ -121,8 +122,8 @@ export class Room {
   }
 }
 
-export function getOrCreateRoom() {
-  // Find the latest regular room that has less than 2 players
+export function getOrCreateRoom(name = "default") {
+  // Find the latest regular room that has less than 2 player
   let room = rooms.find(r => r.type === "regular" && r.players.size < 2);
   
   // If no available, create a new one
@@ -130,6 +131,6 @@ export function getOrCreateRoom() {
     room = new Room(null, "regular");
     rooms.push(room);
   }
-  
+  room.name = name;
   return room;
 }

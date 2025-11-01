@@ -4,7 +4,6 @@ import cors from "@fastify/cors";
 import { fastifyMultipart } from "@fastify/multipart";
 import { fastifyStatic } from "@fastify/static";
 import websocket from "@fastify/websocket";
-import metricsPlugin from "fastify-metrics";
 import { getOrCreateRoom, rooms, Room } from "./gameRooms.js";
 import { initDb } from "./initDatabases.js";
 import { fetchAll, updateRowInTable, addRowToTable, removeRowFromTable } from "./DatabaseUtils.js";
@@ -14,15 +13,14 @@ import fastifyCookie from "@fastify/cookie";
 import fastifyJWT from "@fastify/jwt";
 import tournamentRoutes from "./tournament/managers/TournamentRoutes.js";
 import { TournamentManager } from "./tournament/managers/TournamentManager.js";
-import path from "node:path";
+import path, { resolve } from "node:path";
+import metricsPlugin from "fastify-metrics";
 
 import fastifyRoutes from "./fastifyRoutes.js";
 
 // import * as Shared from "@app/shared";
 // or import specific identifiers, e.g.:
 // import { Config } from "@app/shared";
-
-// import { startGameLoop } from "./game.js";
 
 const fastify = Fastify({ logger: true });
 fastify.register(tournamentRoutes);
@@ -57,7 +55,7 @@ await fastify.register(metricsPlugin, {
   enableDefaultMetrics: true,
 });
 
-// Initialize database
+// Call the initDb function to create the tables by the time the server starts
 initDb(db);
 
 // Register routes from fastifyRoutes.js
@@ -70,7 +68,7 @@ const clients = new Map();
 // New sockets/connections are added to the clients map (at the moment)
 // Later this should be moved to a more sophisticated user management system where new users are registered and authenticated
 fastify.get("/ws", { websocket: true }, (connection, req) => {
-	console.log("New WebSocket connection in backend");
+	//console.log("New WebSocket connection in backend");
 	// Getting the userId from the JWT token in the cookie
 	const userId = getUserIdFromRequest(req, fastify);
 	if (userId === -1) {
@@ -89,7 +87,7 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
 	// If the websocket is already in the set, it is simply ignored and not added to the set again
 	set.add(ws);
 
-	console.log(`Current connected clients: ${[...clients.keys()]}`);
+	//console.log(`Current connected clients: ${[...clients.keys()]}`);
 
 	// When a client disconnects, remove it
 	ws.on("close", () => {
@@ -129,28 +127,28 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
 	ws.on("message", async (message) => {
 		let parsed;
 		try {
-			console.log("Received message:", message);
+			//console.log("Received message:", message);
 			// Convert Buffer to string before parsing
-			console.log("Converting to string...")
+			//console.log("Converting to string...")
 			const str = message.toString();
-			console.log("Message as string:", str);
+			//console.log("Message as string:", str);
 			parsed = JSON.parse(str);
 		} catch (e) {
-			console.error("Invalid JSON received:", message.toString());
+			//console.error("Invalid JSON received:", message.toString());
 			return;
 		}
 
 		const { type } = parsed;
-		console.log(`parsed message: ${JSON.stringify(parsed)}. Type: ${type}`);
+		//console.log(`parsed message: ${JSON.stringify(parsed)}. Type: ${type}`);
 
 		if (type === "chat") {
 			const { content, to } = parsed;
 			// ws?.send({ type: "chat", content: text, to: currentChat.peerId });
-			console.log(`Received chat message from user ${userId}: ${content}, to: ${to}`);
+			//console.log(`Received chat message from user ${userId}: ${content}, to: ${to}`);
 			// await addRowToTable(db, "messages", "userId, content", `${userId}, '${content}'`);
 			// Send the message, which the client sent to all connected clients
 			// broadcaster(to, ws, JSON.stringify({ type: 'chat', userId: userId, content: content }));
-			console.log("Sending chat message to user", to);
+			//console.log("Sending chat message to user", to);
 			const set = clients.get(to);
 			if (!set) return;
 			for (const socket of set) {
@@ -158,13 +156,13 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
 					socket.send(JSON.stringify({ type: "chat", userId: userId, content: content }));
 				}
 			}
-			console.log("Chat message sent to user", to);
+			//console.log("Chat message sent to user", to);
 
           // If the user wants to send a game invite
 		} else if (type === "gameInvite") {
 			const { to, roomId } = parsed;
 
-            console.log(`The user ${userId} invites the user ${to} in room ${roomId}`);
+            //console.log(`The user ${userId} invites the user ${to} in room ${roomId}`);
 			
 			const inviter = await fetchAll(db, "SELECT username FROM users WHERE id = ?", [userId]);
 			const inviterName = inviter[0]?.username;
@@ -193,7 +191,7 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
           // If the user wants to accept a game invite
 		} else if (type === "acceptGameInvite") {
 			const { roomId, inviterUserId } = parsed;
-			console.log(`User ${userId} wants to accept game invite from ${inviterUserId}, room: ${roomId}`);
+			//console.log(`User ${userId} wants to accept game invite from ${inviterUserId}, room: ${roomId}`);
 			
 			// Check if inviter is still online and available
 			const inviter = clients.get(inviterUserId);
@@ -326,13 +324,13 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
 				});
 
 				if (alreadyInTournament) {
-					console.log("Already in an active tournament!");
+					//console.log("Already in an active tournament!");
 					return;
 				}
 
 				db.get("SELECT id, username FROM users WHERE id = ?", [userId], (err, row) => {
 					if (err || !row) {
-						console.error("Failed to read user for tournament join:", err?.message);
+						//console.error("Failed to read user for tournament join:", err?.message);
 						return;
 					}
 					let manager = Object.values(tournaments).find(
@@ -348,7 +346,7 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
 					ws.send(JSON.stringify({ type: 'joinedTournament', t_id: manager.getTournament().id }))
 				});
 			} catch (err) {
-				console.error("Failed to join tournament:", err.message);
+				//console.error("Failed to join tournament:", err.message);
 				ws.send(JSON.stringify({
 					type: "error",
 					message: err.message
@@ -365,13 +363,13 @@ export function startLoop(room) {
 	// If both players are ready, start the game
 	if (room.players.size === 2 && Array.from(room.players.values()).every((p) => p.ready)) {
 		room.state.started = true;
-		console.log("Both players are ready, starting the game in room", room.id);
+		//console.log("Both players are ready, starting the game in room", room.id);
 		// Initialize timestamp
 		room.state.timestamp = Date.now();
 		// Start the game loop, which updates the game state and broadcasts it to the players every 16ms
 		room.loopInterval = setInterval(() => loop(room), 16);
 		// Send to the backend log that the game has started in a specific room
-		console.log("Game started in room", room.id);
+		//console.log("Game started in room", room.id);
 		// Broadcast the timestamp to the players
 		broadcaster(room.players.keys(), null, JSON.stringify({ type: "start", timestamp: room.state.timestamp }));
 	}
@@ -394,7 +392,8 @@ export function stopRoom(room, roomId) {
 
 // This function is called every 33ms to update the game state based on the current state and player input.
 // Then broadcast it to the players, so that they can render the new state
-function loop(room) {
+export function loop(room) {
+	let prevState = JSON.stringify(room.state);
 
 	// console.log("Game room tick. GameStatus:", room.state);
 	const config = room.config;
@@ -413,7 +412,9 @@ function loop(room) {
 	room.state.scoreR = room.tempState.scoreR;
 
 	// broadcast the new state to the players
-	broadcaster(room.players.keys(), null, JSON.stringify({ type: "state", state: room.state }));
+	let newState = JSON.stringify({ type: "state", state: room.state });
+	if (prevState !== JSON.stringify(room.state))
+		broadcaster(room.players.keys(), null, newState);
 	// console.log("Broadcasted state:", room.state);
 
 	// Check for win condition: first to 5
@@ -438,24 +439,30 @@ function loop(room) {
 
 		// Update wins/losses in DB for real matches between authenticated users
 		if (winner && loser) {
-			try {
-				console.log("\x1b[31m Winner: ", winner, "\nLoser: ", loser, " \x1b[0m");
-				db.run("UPDATE users SET wins = wins + 1 WHERE id = ?", [winner.userId], function (err) {
-					if (err) console.error("Failed to increment winner wins:", err.message);
-					else console.log(`Incremented wins for user ${winner.userId}`);
-				});
-				db.run("UPDATE users SET level = FLOOR((-1 + SQRT(8 * wins + 9)) / 2) WHERE id = ?;", [winner.userId], function (err) {
-					if (err) console.error("Failed to set winner level:", err.message);
-					else console.log(`Calculated level for user ${winner.userId}`);
-				});
-				db.run("UPDATE users SET losses = losses + 1 WHERE id = ?", [loser.userId], function (err) {
-					if (err) console.error("Failed to increment loser losses:", err.message);
-					else console.log(`Incremented losses for user ${loser.userId}`);
-				});
-			} catch (e) {
-				console.error("Error updating user win/loss:", e);
-			}
-
+				// console.log("\x1b[31m Winner: ", winner, "\nLoser: ", loser, " \x1b[0m");
+			Promise.all([
+				new Promise(resolve => {
+					db.run("UPDATE users SET wins = wins + 1 WHERE id = ?", [winner.userId], resolve);
+				}),
+				new Promise(resolve => {
+					db.run("UPDATE users SET level = FLOOR((-1 + SQRT(8 * wins + 9)) / 2) WHERE id = ?;", [winner.userId], resolve);
+				}),
+				new Promise(resolve => {
+					db.run("UPDATE users SET losses = losses + 1 WHERE id = ?", [loser.userId], resolve);
+				})
+			]).catch(err => console.error("Error was: ", err));
+				// db.run("UPDATE users SET wins = wins + 1 WHERE id = ?", [winner.userId], function (err) {
+				// 	// if (err) console.error("Failed to increment winner wins:", err.message);
+				// 	// else console.log(`Incremented wins for user ${winner.userId}`);
+				// });
+				// db.run("UPDATE users SET level = FLOOR((-1 + SQRT(8 * wins + 9)) / 2) WHERE id = ?;", [winner.userId], function (err) {
+				// 	// if (err) console.error("Failed to set winner level:", err.message);
+				// 	// else console.log(`Calculated level for user ${winner.userId}`);
+				// });
+				// db.run("UPDATE users SET losses = losses + 1 WHERE id = ?", [loser.userId], function (err) {
+				// 	// if (err) console.error("Failed to increment loser losses:", err.message);
+				// 	// else console.log(`Incremented losses for user ${loser.userId}`);
+				// });
 			if (room.tournamentManager && room.matchId !== undefined) {
 				room.tournamentManager.recordMatchResult(room.matchId, winner.userId);
 				const t = room.tournamentManager.getTournament();
