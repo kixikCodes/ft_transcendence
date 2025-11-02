@@ -64,8 +64,8 @@ SLACK_WEBHOOK_URL=[Slack Webhook URL for Alert Manager]
 
 **Tobias Keil** - Website routing and web sockets, networking and remote player systems, database and backend setup, general project architecture, live chat and dashboard implementations, user friending, blocking and invites system, playtesting.
 
-**Noel Monzon** - Cybersecurity, user registration flow, authentication and authorization systems, user settings, frontend and UI design, project management, sound design and music, playtesting, documentation.
-
 **Betül Büber** - DevOps and monitoring systems, playtesting.
+
+**Myself** - Cybersecurity, user registration flow, authentication and authorization systems, user settings, frontend and UI design, project management, sound design and music, playtesting, documentation.
 
 Special Thanks: [SkyeCodes](https://github.com/skyecodes) for help with profile picture system implementation, playtesting and providing a server to host the project for online testing.
