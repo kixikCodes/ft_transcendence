@@ -7,8 +7,6 @@
   </p>
 </div>
 
-In collaboration my peers [Jacob](https://github.com/Cimex404), [Tobias](https://github.com/tmkeil) and [Betül](https://github.com/Bebuber).
-
 ## About
 This is the final project of the 42 Common Core. It is meant to put all of our skills to the test by making a full-stack web application with tons of features. The premise is simply to make our own version of Pong with some modern features of our choice. The project features optional Major and Minor modules which count toward the final score.
 
@@ -68,4 +66,4 @@ SLACK_WEBHOOK_URL=[Slack Webhook URL for Alert Manager]
 
 **Betül Büber** - DevOps and monitoring systems, playtesting.
 
-Special Thanks: **[SkyeCodes]**(https://github.com/skyecodes) for help with profile picture system implementation, playtesting and providing a server to host the project for online testing.
+Special Thanks: [SkyeCodes](https://github.com/skyecodes) for help with profile picture system implementation, playtesting and providing a server to host the project for online testing.
