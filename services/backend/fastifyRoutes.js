@@ -331,19 +331,26 @@ export default async function (fastify, options) {
 				);
 				if (user.mfa_enabled) // 2FA enabled, just pass tempToken
 					reply.send({ mfa_required: true, tempToken });
-				else { // 2FA disabled, issue full access token in cookies
+				else { // 2FA disabled, issue full access token in cookies (lifetime of 7 days)
 					const accessToken = fastify.jwt.sign(
 						{ sub: user.id, username: user.username },
-						{ expiresIn: "15m" }
+						{ expiresIn: "7d" }
 					);
 					reply.setCookie("auth", accessToken, {
 						httpOnly: true,
 						sameSite: "lax",
 						secure: true,
 						path: "/",
-						maxAge: 15 * 60,
+						maxAge: 7 * 24 * 60 * 60,
 					});
-					reply.send({ mfa_required: false, user: { id: user.id, username: user.username, email: user.email } });
+					reply.send({
+                        mfa_required: false,
+                        user: {
+                            id: user.id,
+                            username: user.username,
+                            email: user.email
+                        } 
+                    });
 				}
 			}
 		);

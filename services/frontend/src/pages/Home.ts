@@ -532,9 +532,9 @@ const attachTooltipListeners = (root: HTMLElement) => {
   if (!tooltip) return;
   // Array with hints for each game mode button
   const hints: Record<string, string> = {
-    "local-1v1": "Play locally against a friend on the same device.",
-    "online-1v1": "Find matches online and climb the ranks.",
-    "tournament": "Join tournaments and collect titles.",
+    "local-1v1": "Play against a friend on the same device.",
+    "online-1v1": "Challenge players online and level up.",
+    "tournament": "Join tournaments and play in rounds.",
     "singleplayer-ai": "Train against AI with adjustable difficulty levels.",
   };
   // Attach event listeners to all buttons, that have a data-mode attribute
