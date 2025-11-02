@@ -3,6 +3,13 @@
 UNAME_S := $(shell uname -s)
 
 build:
+	@echo " _____  __    _        __  __    ___   __    __  ___  __    __  ___   __ "
+	@echo "/__   \/__\  /_\    /\ \ \/ _\  / __\ /__\/\ \ \/   \/__\/\ \ \/ __\ /__\"
+	@echo "  / /\/ \// //_\\  /  \/ /\ \  / /   /_\ /  \/ / /\ /_\ /  \/ / /   /_\  "
+	@echo " / / / _  \/  _  \/ /\  / _\ \/ /___//__/ /\  / /_///__/ /\  / /___//__  "
+	@echo " \/  \/ \_/\_/ \_/\_\ \/  \__/\____/\__/\_\ \/___,'\__/\_\ \/\____/\__/  "
+	@echo "by Team Babylonians"
+	@echo
 	@echo "Building Services..."
 	docker compose up --build -d
 	docker ps -a
@@ -26,7 +33,6 @@ prune: down
 re: down build
 
 reset: prune build
-
 
 help:
 	@echo "----------------------------------------------------"
