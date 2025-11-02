@@ -7,5 +7,4 @@ providers:
     type: file
     disableDeletion: false
     options:
-      # Grafana will read dashboard JSON files from this path inside the container.
       path: /etc/grafana/provisioning/dashboards/dashboards_files

@@ -23,10 +23,6 @@ scrape_configs:
   - job_name: 'grafana'
     static_configs:
       - targets: ['grafana:3000']
-
-
-# remote_write:               # Remote write configuration for Grafana Cloud
-#   - url: <https://your-remote-write-endpoint>
-#     basic_auth:
-#       username: <your user name>
-#       password: <Your Grafana.com API Key>
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']

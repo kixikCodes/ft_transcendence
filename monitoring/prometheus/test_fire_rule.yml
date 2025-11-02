@@ -1,11 +1,11 @@
 groups:
-  - name: manual.test
+  - name: Transcendence
     rules:
-      - alert: ManualTestAlert
+      - alert: Program is running
         expr: vector(1)
         for: 0s
         labels:
-          severity: critical
+          severity: info
         annotations:
-          summary: "Manual test alert"
-          description: "Fires unconditionally to test Prometheus -> Alertmanager -> Slack pipeline."
+          summary: "The Game is up"
+          description: "Fires when the game is starting."

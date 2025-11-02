@@ -1,9 +1,9 @@
 groups:
-  - name: basic.rules
+  - name: basic.alerts
     rules:
       - alert: BackendDown
         expr: up{job="backend"} == 0
-        for: 1m
+        for: 20s
         labels:
           severity: critical
           team: backend
