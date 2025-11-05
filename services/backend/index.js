@@ -144,23 +144,32 @@ fastify.get("/ws", { websocket: true }, (connection, req) => {
         //console.log(`parsed message: ${JSON.stringify(parsed)}. Type: ${type}`);
 
         if (type === "chat") {
-            const { content, to } = parsed;
-            // ws?.send({ type: "chat", content: text, to: currentChat.peerId });
-            //console.log(`Received chat message from user ${userId}: ${content}, to: ${to}`);
-            // await addRowToTable(db, "messages", "userId, content", `${userId}, '${content}'`);
-            // Send the message, which the client sent to all connected clients
-            // broadcaster(to, ws, JSON.stringify({ type: 'chat', userId: userId, content: content }));
-            //console.log("Sending chat message to user", to);
-            const set = clients.get(to);
-            if (!set) return;
-            for (const socket of set) {
-                if (socket.readyState === 1) {
-                    socket.send(JSON.stringify({ type: "chat", userId: userId, content: content }));
+            const { content } = parsed;
+            let username = "Unknown";
+            try {
+                const rows = await fetchAll(db, "SELECT username FROM users WHERE id = ?", [userId]);
+                if (rows && rows[0] && rows[0].username) username = rows[0].username;
+            } catch (err) {
+                console.warn("Failed to fetch username for chat broadcast:", err?.message || err);
+            }
+
+            // Broadcast to all connected clients EXCEPT the sender socket to avoid duplicate local echo
+            for (const [_, sockets] of clients) {
+                for (const socket of sockets) {
+                    try {
+                        if (socket.readyState === 1 && socket !== ws) {
+                            socket.send(JSON.stringify({
+                                type: "chat",
+                                userId: userId,
+                                username: username,
+                                content: content
+                            }));
+                        }
+                    } catch (e) {
+                        console.warn("Failed to send chat to a client:", e);
+                    }
                 }
             }
-            //console.log("Chat message sent to user", to);
-
-            // If the user wants to send a game invite
         } else if (type === "gameInvite") {
             const { to, roomId } = parsed;
 

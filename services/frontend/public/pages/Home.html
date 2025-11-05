@@ -53,7 +53,7 @@
     <aside class="sidebar relative bg-gray-800 border-2 border-gray-300 p-10 flex flex-col rounded-lg w-[300px]">
         <!-- Invites / Requests -->
         <section class="notifications flex justify-between items-center border-2 border-gray-300 p-2 mb-5 bg-gray-700">
-            <span class="text-white">Invites / Requests</span>
+            <span class="text-white">Friend Requests</span>
             <div class="notif-icon relative" aria-label="Notifications">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                     stroke="white" class="size-6">
@@ -82,6 +82,11 @@
             <div id="friends-empty" class="text-gray-400 text-sm mt-2 hidden">You have no friends.</div>
         </section>
 
+        <button id="global-chat-btn" 
+            class="text-2xl mb-2 px-6 py-2 bg-gray-700 border-2 border-gray-300 text-white rounded hover:bg-teal-400 hover:border-teal-400 hover:text-white transition">
+            Live Chat
+        </button>
+
         <button id="user-dashboard-btn"
             class="user-dashboard-btn text-2xl mt-4 px-6 py-2 bg-gray-700 border-2 border-gray-300 text-white rounded hover:bg-teal-400 hover:border-teal-400 hover:text-white transition"
             data-nav="user-dashboard">
@@ -98,11 +103,8 @@
             class="bg-gray-800 border border-gray-300 rounded-xl w-[min(720px,92vw)] max-h-[80vh] flex flex-col shadow">
             <!-- flex to arrange avatar, username, and close button with a gap, padding -->
             <header class="flex items-center gap-3 p-3 border-b border-gray-300">
-                <img class="profile-pic w-10 h-10 border-2 border-gray-300 rounded-full mr-2 bg-gray-700 avatar"
-                    id="chat-avatar" aria-hidden="true"
-                    onerror="this.onerror=null; this.src='/api/public/user_pfps/default.png'" />
                 <!-- White text, larger font size -->
-                <h3 id="chat-username" class="text-white text-lg">Username</h3>
+                <h3 class="text-white text-lg">Global Live Chat</h3>
                 <!-- Close btn margin-left auto to push it to the right -->
                 <button id="chat-close" class="ml-auto text-zinc-400 hover:text-white text-2xl">&times;</button>
             </header>
@@ -119,10 +121,6 @@
                 <button type="submit" id="chat-send"
                     class="px-4 py-2 rounded-md bg-teal-500 text-white hover:bg-teal-600 transition">
                     Send
-                </button>
-                <button type="button" id="chat-invite-btn"
-                    class="px-3 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition text-sm">
-                    Invite
                 </button>
             </form>
         </div>
@@ -204,6 +202,10 @@
                 <button id="home-users-add-friend"
                     class="w-full px-4 py-2 rounded-md bg-teal-500 text-white hover:bg-teal-600 transition">
                     Add Friend
+                </button>
+                <button id="home-users-invite"
+                    class="w-full px-4 py-2 rounded-md bg-orange-500 text-white hover:bg-orange-700 transition hidden">
+                    Invite
                 </button>
                 <button id="home-users-unfriend"
                     class="w-full px-4 py-2 rounded-md bg-gray-600 text-white hover:bg-gray-700 transition hidden">
